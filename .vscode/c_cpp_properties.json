@@ -6,13 +6,14 @@
         "limitSymbolsToIncludedHeaders": false
       },
       "includePath": [
-        "${workspaceFolder}/**"
+        "/opt/ros/jazzy/include/**",
+        "/usr/include/**"
       ],
-      "name": "windows-gcc-x64",
-      "intelliSenseMode": "windows-gcc-x64",
-      "compilerPath": "C:/Users/ASUS/scoop/apps/gcc/current/bin/gcc.exe",
-      "cStandard": "${default}",
-      "cppStandard": "${default}"
+      "name": "ros2",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++17"
     }
   ],
   "version": 4
