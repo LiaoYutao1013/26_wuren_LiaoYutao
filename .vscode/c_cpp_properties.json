@@ -1,17 +1,19 @@
 {
   "configurations": [
     {
-      "name": "windows-gcc-x64",
+      "browse": {
+        "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db",
+        "limitSymbolsToIncludedHeaders": false
+      },
       "includePath": [
-        "${workspaceFolder}/**"
+        "/opt/ros/jazzy/include/**",
+        "/usr/include/**"
       ],
-      "compilerPath": "C:/Users/ASUS/scoop/apps/gcc/current/bin/gcc.exe",
-      "cStandard": "${default}",
-      "cppStandard": "${default}",
-      "intelliSenseMode": "windows-gcc-x64",
-      "compilerArgs": [
-        ""
-      ]
+      "name": "ros2",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++17"
     }
   ],
   "version": 4

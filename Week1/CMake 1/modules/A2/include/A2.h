@@ -8,7 +8,7 @@
 #pragma once
 
 #include <deque>
-
+#include <cstddef>
 class A2
 {
     std::deque<int> __vec;
@@ -19,5 +19,5 @@ public:
     void push(int);
     int pop();
 
-    inline size_t size() { return __vec.size(); }
+    inline std::size_t size() { return __vec.size(); }
 };
