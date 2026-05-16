@@ -5,5 +5,6 @@
     ],
     "python.analysis.extraPaths": [
         "/opt/ros/jazzy/lib/python3.12/site-packages"
-    ]
+    ],
+    "cmake.sourceDirectory": "E:/Mech_Engineering/SCUT_Racing_Tasks/Week1/CMake 1"
 }
