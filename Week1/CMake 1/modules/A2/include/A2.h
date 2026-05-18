@@ -8,7 +8,6 @@
 #pragma once
 
 #include <deque>
-#include <cstddef>
 class A2
 {
     std::deque<int> __vec;
