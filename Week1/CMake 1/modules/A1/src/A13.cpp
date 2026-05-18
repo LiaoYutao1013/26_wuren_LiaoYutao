@@ -12,5 +12,5 @@ using namespace std;
 
 void A1::print3()
 {
-    cout << "I'm planning" << endl;
+    cout << "I'm A3" << endl;
 }
