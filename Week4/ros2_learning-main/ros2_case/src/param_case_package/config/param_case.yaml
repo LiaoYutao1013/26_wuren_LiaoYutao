@@ -1,0 +1,16 @@
+param_case:
+  ros__parameters:
+    turtlesim_node_name: turtlesim
+    background_r_start: 0
+    background_g_start: 0
+    background_b_start: 0
+    background_r_min: 0
+    background_g_min: 0
+    background_b_min: 0
+    background_r_max: 255
+    background_g_max: 255
+    background_b_max: 255
+    background_r_step: 5
+    background_g_step: 3
+    background_b_step: 4
+    loop_rate_hz: 10.0
