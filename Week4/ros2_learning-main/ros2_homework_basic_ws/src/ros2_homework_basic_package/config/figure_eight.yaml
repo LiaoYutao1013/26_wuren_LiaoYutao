@@ -1,0 +1,20 @@
+figure_eight_turtle:
+  ros__parameters:
+    # 话题名称，发布Twist消息控制乌龟运动。
+    cmd_vel_topic: /turtle1/cmd_vel
+
+    # 用线速度与角速度之比确定圆周半径。
+    linear_velocity: 2.0
+    angular_velocity: 1.5
+
+    # 发布Twist命令的频率。
+    publish_rate_hz: 30.0
+
+    # 延时等待初始化彻底完成，单位为秒。
+    initial_delay_sec: 0.8
+
+    # 描述重复次数，0表示无限重复，正整数表示重复进行指定次数次，负整数表示重复直到节点被关闭。
+    figure_eight_repetitions: 0
+
+    # 指定运动顺逆时针方向，默认false为从逆时针开始，然后在每个完整圆圈后交替方向。
+    start_clockwise: false
