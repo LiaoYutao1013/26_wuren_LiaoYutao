@@ -20,11 +20,12 @@ source install/setup.bash
 
 ## 运行
 
-编译并加载环境后，执行
+在终端执行以下命令启动小海龟
 
 ```bash
-ros2 launch ros2_homework_basic_package figure_eight.launch.py
+ros2 launch ros2_homework_basic_package figure_eight.launch.py #终端1
+ros2 run ros2_homework_basic_package keyboard_quit_node #终端2
 ```
 
 程序启动后，小海龟会先沿一个完整圆周运动，然后反转角速度沿另一个完整圆周运动，两个圆相切，形成8字形轨迹。
-此外，可通过按键q退出程序（Ctrl+C感觉不是很优雅啊）
+此外，可在终端2通过按键q退出程序（Ctrl+C感觉不是很优雅啊）

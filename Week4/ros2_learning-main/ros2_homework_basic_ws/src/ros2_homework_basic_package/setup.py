@@ -26,6 +26,7 @@ setup(
     entry_points={
         'console_scripts': [
             'figure_eight_turtle = ros2_homework_basic_package.figure_eight_turtle:main',
+            'keyboard_quit_node = ros2_homework_basic_package.keyboard_quit_node:main',
         ],
     },
 )

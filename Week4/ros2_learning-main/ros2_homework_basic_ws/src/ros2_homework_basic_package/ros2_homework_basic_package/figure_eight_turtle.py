@@ -8,12 +8,25 @@ import rclpy
 from geometry_msgs.msg import Twist
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
+from std_msgs.msg import Bool
 
 
 class FigureEightTurtle(Node):
     """Publish velocity commands that make turtlesim draw a figure-eight."""
 
     def __init__(self):
+        """初始化节点，声明并获取参数，设置发布器和定时器，启动键盘监听线程（用于键盘控制退出）。
+           参数表：
+           - cmd_vel_topic: 发布速度命令的主题名称，默认为 /turtle1/cmd_vel；
+           - linear_velocity: 线速度，默认为2.0m/s；
+           - angular_velocity: 角速度，默认为1.5rad/s；
+           - publish_rate_hz: 发布速度命令的频率，默认为30.0Hz；
+           - initial_delay_sec: 启动后运动延时，默认为0.8秒；
+           - figure_eight_repetitions: 绘图重复次数，默认为0（无限重复）；
+           - start_clockwise: 小海龟的运动顺逆时针方向，默认为False（先逆时针）；
+           - keyboard_quit_enabled: 是否启用键盘按键退出功能，默认为True；
+           - quit_key: 退出键，默认为q。"""
+        
         super().__init__('figure_eight_turtle')
 
         self.declare_parameter('cmd_vel_topic', '/turtle1/cmd_vel')
@@ -77,7 +90,15 @@ class FigureEightTurtle(Node):
             f'circle_period={self.circle_duration:.3f} s'
         )
 
+        self.quit_subscription = self.create_subscription(
+            Bool,
+            'quit_signal',
+            self._quit_signal_callback,
+            10,
+        )
+
     def _validate_parameters(self):
+        """在AI的建议下加了这段异常触发，虽然这个任务理论上不会出错，但还是在此提醒自己参与开发时要注意程序的稳定性。"""
         if not self.cmd_vel_topic:
             raise ValueError('cmd_vel_topic must not be empty')
         if self.linear_velocity <= 0.0:
@@ -203,6 +224,12 @@ class FigureEightTurtle(Node):
             f"Received quit key '{self.quit_key}'. Stopping turtle and exiting."
         )
         rclpy.try_shutdown()
+
+    def _quit_signal_callback(self, msg):
+        if msg.data:
+            self.publisher.publish(Twist())
+            self.get_logger().info('Received quit signal. Stopping turtle and exiting.')
+            rclpy.try_shutdown()
 
 
 def main(args=None):
