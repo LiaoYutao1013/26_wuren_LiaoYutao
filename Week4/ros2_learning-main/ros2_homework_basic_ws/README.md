@@ -26,4 +26,5 @@ source install/setup.bash
 ros2 launch ros2_homework_basic_package figure_eight.launch.py
 ```
 
-程序启动后，小海龟会先沿一个完整圆周运动，然后反转角速度沿另一个完整圆周运动。两个相切圆周不断交替重复，即可形成连续的“8”字形轨迹。
+程序启动后，小海龟会先沿一个完整圆周运动，然后反转角速度沿另一个完整圆周运动，两个圆相切，形成8字形轨迹。
+此外，可通过按键q退出程序（Ctrl+C感觉不是很优雅啊）

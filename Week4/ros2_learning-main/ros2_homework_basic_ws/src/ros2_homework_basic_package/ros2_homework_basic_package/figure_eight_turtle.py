@@ -1,8 +1,12 @@
 import math
+import os
+import sys
+import threading
 import time
 
 import rclpy
 from geometry_msgs.msg import Twist
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 
 
@@ -19,6 +23,8 @@ class FigureEightTurtle(Node):
         self.declare_parameter('initial_delay_sec', 0.8)
         self.declare_parameter('figure_eight_repetitions', 0)
         self.declare_parameter('start_clockwise', False)
+        self.declare_parameter('keyboard_quit_enabled', True)
+        self.declare_parameter('quit_key', 'q')
 
         self.cmd_vel_topic = (
             self.get_parameter('cmd_vel_topic').get_parameter_value().string_value
@@ -41,6 +47,12 @@ class FigureEightTurtle(Node):
         self.start_clockwise = (
             self.get_parameter('start_clockwise').get_parameter_value().bool_value
         )
+        self.keyboard_quit_enabled = (
+            self.get_parameter('keyboard_quit_enabled').get_parameter_value().bool_value
+        )
+        self.quit_key = (
+            self.get_parameter('quit_key').get_parameter_value().string_value
+        )
 
         self._validate_parameters()
 
@@ -49,8 +61,12 @@ class FigureEightTurtle(Node):
         self.start_time = time.monotonic()
         self.current_circle_index = -1
         self.finished = False
+        self.shutdown_requested = False
 
         self.timer = self.create_timer(1.0 / self.publish_rate_hz, self._publish_cmd_vel)
+        self.keyboard_thread = None
+        if self.keyboard_quit_enabled:
+            self._start_keyboard_listener()
 
         radius = self.linear_velocity / self.angular_velocity
         self.get_logger().info(
@@ -74,8 +90,13 @@ class FigureEightTurtle(Node):
             raise ValueError('initial_delay_sec must be greater than or equal to 0')
         if self.figure_eight_repetitions < 0:
             raise ValueError('figure_eight_repetitions must be greater than or equal to 0')
+        if len(self.quit_key) != 1:
+            raise ValueError('quit_key must be a single character')
 
     def _publish_cmd_vel(self):
+        if self.shutdown_requested:
+            return
+
         elapsed = time.monotonic() - self.start_time
 
         if elapsed < self.initial_delay_sec:
@@ -114,6 +135,75 @@ class FigureEightTurtle(Node):
     def _direction_name(self, circle_index):
         return 'clockwise' if self._angular_direction(circle_index) < 0.0 else 'counterclockwise'
 
+    def _start_keyboard_listener(self):
+        self.keyboard_thread = threading.Thread(
+            target=self._keyboard_listener_loop,
+            name='keyboard_quit_listener',
+            daemon=True,
+        )
+        self.keyboard_thread.start()
+        self.get_logger().info(
+            f"Press '{self.quit_key}' in the launch terminal to stop the turtle."
+        )
+
+    def _keyboard_listener_loop(self):
+        if os.name == 'nt':
+            self._windows_keyboard_listener_loop()
+            return
+
+        self._posix_keyboard_listener_loop()
+
+    def _windows_keyboard_listener_loop(self):
+        import msvcrt
+
+        quit_key = self.quit_key.lower()
+        while rclpy.ok() and not self.shutdown_requested:
+            if msvcrt.kbhit():
+                key = msvcrt.getwch()
+                if key.lower() == quit_key:
+                    self._request_shutdown_by_key()
+                    return
+            time.sleep(0.05)
+
+    def _posix_keyboard_listener_loop(self):
+        if not sys.stdin.isatty():
+            self.get_logger().warning(
+                'Keyboard quit is disabled because stdin is not a TTY. '
+                'Run the node in an interactive terminal if you need q-to-quit.'
+            )
+            return
+
+        import select
+        import termios
+        import tty
+
+        quit_key = self.quit_key.lower()
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+
+        try:
+            tty.setcbreak(fd)
+            while rclpy.ok() and not self.shutdown_requested:
+                readable, _, _ = select.select([sys.stdin], [], [], 0.05)
+                if readable:
+                    key = sys.stdin.read(1)
+                    if key.lower() == quit_key:
+                        self._request_shutdown_by_key()
+                        return
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+    def _request_shutdown_by_key(self):
+        if self.shutdown_requested:
+            return
+
+        self.shutdown_requested = True
+        self.publisher.publish(Twist())
+        self.get_logger().info(
+            f"Received quit key '{self.quit_key}'. Stopping turtle and exiting."
+        )
+        rclpy.try_shutdown()
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -121,12 +211,13 @@ def main(args=None):
 
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
-        node.publisher.publish(Twist())
+        if rclpy.ok():
+            node.publisher.publish(Twist())
         node.destroy_node()
-        rclpy.shutdown()
+        rclpy.try_shutdown()
 
 
 if __name__ == '__main__':

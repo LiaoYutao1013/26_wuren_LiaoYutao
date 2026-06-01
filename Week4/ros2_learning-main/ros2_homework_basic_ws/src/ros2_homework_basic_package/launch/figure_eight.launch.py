@@ -21,6 +21,7 @@ def generate_launch_description():
         executable='figure_eight_turtle',
         name='figure_eight_turtle',
         output='screen',
+        emulate_tty=True,
         parameters=[figure_eight_config],
     )
 
