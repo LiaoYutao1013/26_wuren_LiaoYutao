@@ -80,7 +80,8 @@ private:
     marker.scale.y = marker_scale_;
     marker.scale.z = marker_scale_;
     marker.color = color;
-    marker.lifetime = rclcpp::Duration::from_seconds(0.0).to_msg();
+    marker.lifetime.sec = 0;
+    marker.lifetime.nanosec = 0;
 
     marker.points.reserve(cones.size());
     for (const auto & cone : cones) {
