@@ -9,13 +9,15 @@ find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(can_msgs REQUIRED)
-find_package(nav_msgs REQUIRED)
-file(GLOB MSG_FILES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "msg/*.msg")
+
+set(MSG_FILES
+  "msg/Cone.msg"
+  "msg/Map.msg"
+)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${MSG_FILES}
-  DEPENDENCIES std_msgs geometry_msgs can_msgs nav_msgs
+  DEPENDENCIES std_msgs geometry_msgs
 )
 
 ament_export_dependencies(rosidl_default_runtime)
