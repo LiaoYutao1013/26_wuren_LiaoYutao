@@ -11,8 +11,8 @@ find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
 set(MSG_FILES
-  "msg/Cone.msg"
-  "msg/Map.msg"
+  "msg/Cone.idl"
+  "msg/Map.idl"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}
