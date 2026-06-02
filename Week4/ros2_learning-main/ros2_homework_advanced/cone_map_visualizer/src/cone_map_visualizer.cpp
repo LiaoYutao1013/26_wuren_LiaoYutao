@@ -59,6 +59,15 @@ private:
     return "world";
   }
 
+  builtin_interfaces::msg::Time makeCurrentStamp() const
+  {
+    const auto now_ns = this->get_clock()->now().nanoseconds();
+    builtin_interfaces::msg::Time stamp;
+    stamp.sec = static_cast<int32_t>(now_ns / 1000000000LL);
+    stamp.nanosec = static_cast<uint32_t>(now_ns % 1000000000LL);
+    return stamp;
+  }
+
   template<typename ConeSequenceT>
   visualization_msgs::msg::Marker makeConeMarker(
     const std::string & frame_id,
@@ -96,32 +105,33 @@ private:
   void handleMap(const fsd_common_msgs::msg::Map::SharedPtr msg)
   {
     const auto frame_id = resolveFrame(msg);
+    const auto marker_stamp = makeCurrentStamp();
 
     visualization_msgs::msg::MarkerArray marker_array;
     marker_array.markers.push_back(makeConeMarker(
       frame_id,
-      msg->header.stamp,
+      marker_stamp,
       "cones_blue",
       0,
       msg->cone_blue,
       makeColor(0.05F, 0.20F, 1.00F)));
     marker_array.markers.push_back(makeConeMarker(
       frame_id,
-      msg->header.stamp,
+      marker_stamp,
       "cones_red",
       1,
       msg->cone_red,
       makeColor(1.00F, 0.05F, 0.02F)));
     marker_array.markers.push_back(makeConeMarker(
       frame_id,
-      msg->header.stamp,
+      marker_stamp,
       "cones_unknown",
       2,
       msg->cone_unknown,
       makeColor(0.78F, 0.78F, 0.78F)));
     marker_array.markers.push_back(makeConeMarker(
       frame_id,
-      msg->header.stamp,
+      marker_stamp,
       "cones_yellow",
       3,
       msg->cone_yellow,
