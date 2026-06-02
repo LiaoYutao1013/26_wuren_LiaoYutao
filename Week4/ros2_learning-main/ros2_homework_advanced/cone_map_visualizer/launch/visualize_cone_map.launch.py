@@ -47,6 +47,23 @@ def generate_launch_description():
         condition=IfCondition(use_rviz),
     )
 
+    static_tf_node = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='world_frame_publisher',
+        output='screen',
+        arguments=[
+            '--x', '0',
+            '--y', '0',
+            '--z', '0',
+            '--roll', '0',
+            '--pitch', '0',
+            '--yaw', '0',
+            '--frame-id', 'world',
+            '--child-frame-id', 'map',
+        ],
+    )
+
     delayed_bag_play = TimerAction(
         period=2.0,
         actions=[
@@ -68,6 +85,7 @@ def generate_launch_description():
         DeclareLaunchArgument('play_bag', default_value='true'),
         DeclareLaunchArgument('use_rviz', default_value='true'),
         visualizer_node,
+        static_tf_node,
         rviz_node,
         delayed_bag_play,
     ])

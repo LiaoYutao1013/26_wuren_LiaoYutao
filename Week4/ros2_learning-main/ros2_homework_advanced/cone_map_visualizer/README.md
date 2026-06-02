@@ -25,7 +25,7 @@ cone_red
 cone_unknown
 ```
 
-本节点订阅 `Map` 后，把每类锥桶的 `position` 转换成 RViz 的 `visualization_msgs/msg/MarkerArray`。其中红色、蓝色、未知颜色分别使用不同namespace和颜色显示；黄色锥桶也保留支持。
+本节点订阅 `Map` 后，把每类锥桶的 `position` 转换成 RViz 的 `visualization_msgs/msg/MarkerArray`。其中红色、蓝色、未知颜色分别使用不同 namespace 和颜色显示；黄色锥桶也保留支持。
 
 输出话题是：
 
@@ -33,21 +33,49 @@ cone_unknown
 /visualization/cone_markers
 ```
 
-RViz的Fixed Frame使用world，因为给定bag中Map.header.frame_id是world。
+RViz 的 Fixed Frame 使用 `world`，因为给定 bag 中 `Map.header.frame_id` 是 `world`。为了避免 RViz 报 `Frame [world] does not exist`，launch 文件会额外发布一个静态 TF，让 `world` frame 出现在 TF 树中。
 
-## 启动方式
+## 编译
 
-编译成功并source后，运行
+在 ROS2 Jazzy 环境中执行：
+
+```bash
+cd Week4/ros2_learning-main/ros2_homework_advanced
+source /opt/ros/jazzy/setup.bash
+colcon build --packages-select fsd_common_msgs cone_map_visualizer
+source install/setup.bash
+```
+
+如果之前编译失败过，建议先清理缓存：
+
+```bash
+rm -rf build install log
+```
+
+然后重新执行上面的编译命令。
+
+## 推荐启动方式
+
+编译成功并 `source install/setup.bash` 后，直接运行：
 
 ```bash
 ros2 launch cone_map_visualizer visualize_cone_map.launch.py
 ```
 
+这个 launch 会自动完成四件事：
+
+1. 启动 `cone_map_visualizer` 节点。
+2. 发布静态 TF，让 `world` frame 出现在 RViz 的 TF 树中。
+3. 打开 RViz，并加载本包自带的 RViz 配置。
+4. 循环播放已给的 `map_to_visualize` bag。
+
 正常情况下，RViz 中会看到蓝色、红色和灰色锥桶点云式 marker。
 
-## 手动启动
+## 手动启动方式
 
-第一个终端播放bag
+如果想分开观察各个步骤，也可以手动启动。
+
+第一个终端播放 bag：
 
 ```bash
 cd Week4/ros2_learning-main/ros2_homework_advanced
@@ -55,7 +83,7 @@ source install/setup.bash
 ros2 bag play --loop map_to_visualize
 ```
 
-第二个终端启动可视化节点
+第二个终端启动可视化节点：
 
 ```bash
 cd Week4/ros2_learning-main/ros2_homework_advanced
@@ -63,12 +91,28 @@ source install/setup.bash
 ros2 run cone_map_visualizer cone_map_visualizer
 ```
 
-第三个终端打开RViz
+第三个终端发布静态 TF：
+
+```bash
+cd Week4/ros2_learning-main/ros2_homework_advanced
+source install/setup.bash
+ros2 run tf2_ros static_transform_publisher --x 0 --y 0 --z 0 --roll 0 --pitch 0 --yaw 0 --frame-id world --child-frame-id map
+```
+
+第四个终端打开 RViz：
 
 ```bash
 cd Week4/ros2_learning-main/ros2_homework_advanced
 source install/setup.bash
 rviz2 -d install/cone_map_visualizer/share/cone_map_visualizer/rviz/cone_map.rviz
+```
+
+如果不使用配置文件，也可以手动在 RViz 中设置：
+
+```text
+Fixed Frame: world
+Display Type: MarkerArray
+Marker Topic: /visualization/cone_markers
 ```
 
 ## Launch 参数
@@ -100,6 +144,68 @@ ros2 launch cone_map_visualizer visualize_cone_map.launch.py play_bag:=false
 
 ```bash
 ros2 launch cone_map_visualizer visualize_cone_map.launch.py bag_path:=/path/to/map_to_visualize
+```
+
+## 常见问题
+
+如果 RViz 没有显示锥桶，按下面顺序检查。
+
+1. 确认已经执行：
+
+```bash
+source install/setup.bash
+```
+
+2. 确认 bag 正在发布地图话题：
+
+```bash
+ros2 topic list
+```
+
+应该能看到：
+
+```text
+/estimation/slam/map
+```
+
+3. 确认可视化节点正在发布 marker：
+
+```bash
+ros2 topic echo /visualization/cone_markers --once
+```
+
+4. 确认 RViz 的 Fixed Frame 是：
+
+```text
+world
+```
+
+5. 如果 RViz 报 `Frame [world] does not exist`，说明 TF 树中没有 `world`。手动启动时需要运行：
+
+```bash
+ros2 run tf2_ros static_transform_publisher --x 0 --y 0 --z 0 --roll 0 --pitch 0 --yaw 0 --frame-id world --child-frame-id map
+```
+
+6. 确认 RViz 中添加的是 `MarkerArray`，话题是：
+
+```text
+/visualization/cone_markers
+```
+
+## 关于 fsd_common_msgs
+
+本作业只需要 `fsd_common_msgs/msg/Map` 和 `fsd_common_msgs/msg/Cone`。为了适配 ROS2 Jazzy 并避免其它车队消息在接口转换阶段产生无关报错，当前 `fsd_common_msgs` 只生成这两个接口。
+
+`std_msgs` 不能删除，因为 `Map` 中包含：
+
+```text
+std_msgs/Header header
+```
+
+`geometry_msgs` 也不能删除，因为 `Cone` 中包含：
+
+```text
+geometry_msgs/Point position
 ```
 
 ## 报错修复说明
