@@ -1,11 +1,20 @@
+// 单个锥桶的地图表示，供 Map.idl 中的锥桶数组复用。
+
 #include "geometry_msgs/msg/Point.idl"
 
 module fsd_common_msgs {
   module msg {
     struct Cone {
+      // 锥桶在地图/车辆坐标系中的三维位置，通常主要使用 x、y。
       geometry_msgs::msg::Point position;
+
+      // 锥桶颜色标签，例如 blue、yellow、red、unknown。
       string color;
+
+      // 位置估计置信度，数值越大表示位置越可信。
       double pose_confidence;
+
+      // 颜色分类置信度，数值越大表示颜色判断越可信。
       double color_confidence;
     };
   };

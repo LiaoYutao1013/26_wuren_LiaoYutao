@@ -1,24 +1,26 @@
 figure_eight_turtle:
   ros__parameters:
-    # 小海龟使用的速度控制话题。
+    #turtlesim默认监听 /turtle1/cmd_vel，消息类型为geometry_msgs/Twist。
     cmd_vel_topic: /turtle1/cmd_vel
 
-    # 圆周半径=线速度/角速度。
+    #圆弧半径 = 线速度 / 角速度；
     linear_velocity: 2.0
+
+    #角速度取绝对值，实际顺/逆时针方向由start_clockwise和当前圆弧段决定;
     angular_velocity: 1.5
 
-    # Twist速度指令的发布频率。
+    #Twist指令发布频率，频率越高轨迹越平滑;
     publish_rate_hz: 30.0
 
-    # 启动后等待一小段时间，确保turtlesim初始化完成。
+    #启动后先短暂延时，确保turtlesim窗口和订阅器准备好;
     initial_delay_sec: 0.8
 
-    # 0表示持续绘制8字形轨迹。
+    #8字重复次数；0表示不限制次数，持续绘制。
     figure_eight_repetitions: 0
 
-    # false表示先逆时针运动。
+    #false表示逆时针起步,true顺时针起步；
     start_clockwise: false
 
-    # 在启动终端中按下退出键（q），可停止小海龟并退出程序。
-    keyboard_quit_enabled: true
+    #控制节点自身不直接读取键盘；退出由 keyboard_quit_node 发布 quit_signal 完成。
+    keyboard_quit_enabled: false
     quit_key: q

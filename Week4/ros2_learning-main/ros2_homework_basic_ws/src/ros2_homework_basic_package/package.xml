@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+
 <package format="3">
   <name>ros2_homework_basic_package</name>
   <version>0.0.0</version>
@@ -11,6 +12,7 @@
 
   <depend>geometry_msgs</depend>
   <depend>rclpy</depend>
+  <depend>std_msgs</depend>
 
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>

@@ -12,23 +12,25 @@ from std_msgs.msg import Bool
 
 
 class FigureEightTurtle(Node):
-    """Publish velocity commands that make turtlesim draw a figure-eight."""
+    """周期性发布Twist速度指令，让小海龟绘制8字形轨迹"""
 
     def __init__(self):
-        """初始化节点，声明并获取参数，设置发布器和定时器，启动键盘监听线程（用于键盘控制退出）。
-           参数表：
-           - cmd_vel_topic: 发布速度命令的主题名称，默认为 /turtle1/cmd_vel；
-           - linear_velocity: 线速度，默认为2.0m/s；
-           - angular_velocity: 角速度，默认为1.5rad/s；
-           - publish_rate_hz: 发布速度命令的频率，默认为30.0Hz；
-           - initial_delay_sec: 启动后运动延时，默认为0.8秒；
-           - figure_eight_repetitions: 绘图重复次数，默认为0（无限重复）；
-           - start_clockwise: 小海龟的运动顺逆时针方向，默认为False（先逆时针）；
-           - keyboard_quit_enabled: 是否启用键盘按键退出功能，默认为True；
-           - quit_key: 退出键，默认为q。"""
-        
+        """初始化节点、读取参数，并创建发布器、订阅器、定时器和键盘监听线程。
+
+        参数表：
+        - cmd_vel_topic：发布速度指令的topic，默认/turtle1/cmd_vel。
+        - linear_velocity：小海龟前进线速度，单位m/s。
+        - angular_velocity：每个圆弧段的角速度，单位rad/s。
+        - publish_rate_hz：Twist指令发布频率，频率越高轨迹越平滑。
+        - initial_delay_sec：启动后先延时，让turtlesim初始化窗口。
+        - figure_eight_repetitions：重复绘制次数，0表示无限循环；
+        - start_clockwise：是否先顺时针转弯，False表示先逆时针；
+        - keyboard_quit_enabled：是否允许在终端按退出键停止节点；
+        - quit_key：触发退出按键，默认q。
+        """
         super().__init__('figure_eight_turtle')
 
+        # 声明ROS2参数及其默认值
         self.declare_parameter('cmd_vel_topic', '/turtle1/cmd_vel')
         self.declare_parameter('linear_velocity', 2.0)
         self.declare_parameter('angular_velocity', 1.5)
@@ -39,6 +41,7 @@ class FigureEightTurtle(Node):
         self.declare_parameter('keyboard_quit_enabled', True)
         self.declare_parameter('quit_key', 'q')
 
+        #将参数对象转换成普通Python类型，方便计算和判断。
         self.cmd_vel_topic = (
             self.get_parameter('cmd_vel_topic').get_parameter_value().string_value
         )
@@ -67,18 +70,25 @@ class FigureEightTurtle(Node):
             self.get_parameter('quit_key').get_parameter_value().string_value
         )
 
+        #检查参数
         self._validate_parameters()
 
+        #Twist发布器负责向turtlesim发送速度控制命令。
         self.publisher = self.create_publisher(Twist, self.cmd_vel_topic, 10)
+
+        #画一个圆的用时满足角速度*时间=2*pi。
+        #用两个方向相反的圆拼成8字，每画一个圆都切换一次方向。
         self.circle_duration = 2.0 * math.pi / self.angular_velocity
         self.start_time = time.monotonic()
         self.current_circle_index = -1
         self.finished = False
         self.shutdown_requested = False
 
+        #周期性发布速度指令，ROS2定时器回调频率由publish_rate_hz控制。
         self.timer = self.create_timer(1.0 / self.publish_rate_hz, self._publish_cmd_vel)
         self.keyboard_thread = None
         if self.keyboard_quit_enabled:
+            #键盘监听放到后台线程，避免阻塞rclpy.spin()的回调处理。
             self._start_keyboard_listener()
 
         radius = self.linear_velocity / self.angular_velocity
@@ -90,6 +100,7 @@ class FigureEightTurtle(Node):
             f'circle_period={self.circle_duration:.3f} s'
         )
 
+        #监听quit_signal
         self.quit_subscription = self.create_subscription(
             Bool,
             'quit_signal',
@@ -98,7 +109,7 @@ class FigureEightTurtle(Node):
         )
 
     def _validate_parameters(self):
-        """在AI的建议下加了这段异常触发，虽然这个任务理论上不会出错，但还是在此提醒自己参与开发时要注意程序的稳定性。"""
+        """检查参数合法性（虽然这个任务不太可能出岔子）"""
         if not self.cmd_vel_topic:
             raise ValueError('cmd_vel_topic must not be empty')
         if self.linear_velocity <= 0.0:
@@ -115,12 +126,14 @@ class FigureEightTurtle(Node):
             raise ValueError('quit_key must be a single character')
 
     def _publish_cmd_vel(self):
+        """根据当前时间计算所在圆弧段，并发布对应速度"""
         if self.shutdown_requested:
             return
 
         elapsed = time.monotonic() - self.start_time
 
         if elapsed < self.initial_delay_sec:
+            #启动初期先发布零速度，等待turtlesim完成初始化并保持海龟静止（这个过程实则转瞬即逝）。
             self.publisher.publish(Twist())
             return
 
@@ -136,27 +149,34 @@ class FigureEightTurtle(Node):
             return
 
         if circle_index != self.current_circle_index:
+            #每次绘制新的圆弧段时打印一次方向；
             self.current_circle_index = circle_index
             direction_name = self._direction_name(circle_index)
             self.get_logger().info(
                 f'Starting circle {circle_index + 1}: {direction_name}'
             )
 
+        #线速度保持为正，角速度符号决定方向；
         cmd = Twist()
         cmd.linear.x = self.linear_velocity
         cmd.angular.z = self._angular_direction(circle_index) * self.angular_velocity
         self.publisher.publish(cmd)
 
     def _angular_direction(self, circle_index):
+        """根据圆弧序号返回角速度方向
+           1表示逆时针，-1表示顺时针"""
         direction = -1.0 if self.start_clockwise else 1.0
         if circle_index % 2 == 1:
+            # 奇数段反向，拼8字形
             direction *= -1.0
         return direction
 
     def _direction_name(self, circle_index):
+        """返回顺逆时针方向（而不是角速度），方便读打印信息"""
         return 'clockwise' if self._angular_direction(circle_index) < 0.0 else 'counterclockwise'
 
     def _start_keyboard_listener(self):
+        """启动后台键盘监听线程，按下quit_key(q)后退出。"""
         self.keyboard_thread = threading.Thread(
             target=self._keyboard_listener_loop,
             name='keyboard_quit_listener',
@@ -168,6 +188,7 @@ class FigureEightTurtle(Node):
         )
 
     def _keyboard_listener_loop(self):
+        """根据操作系统选择键盘读取方式"""
         if os.name == 'nt':
             self._windows_keyboard_listener_loop()
             return
@@ -175,6 +196,7 @@ class FigureEightTurtle(Node):
         self._posix_keyboard_listener_loop()
 
     def _windows_keyboard_listener_loop(self):
+        """Windows下使用msvcrt读取按键"""
         import msvcrt
 
         quit_key = self.quit_key.lower()
@@ -187,6 +209,7 @@ class FigureEightTurtle(Node):
             time.sleep(0.05)
 
     def _posix_keyboard_listener_loop(self):
+        """Linux/macOS下把stdin切到cbreak读取单个字符"""
         if not sys.stdin.isatty():
             self.get_logger().warning(
                 'Keyboard quit is disabled because stdin is not a TTY. '
@@ -203,8 +226,10 @@ class FigureEightTurtle(Node):
         old_settings = termios.tcgetattr(fd)
 
         try:
+            # cbreak下按键不需要回车即可被read(1)读取。
             tty.setcbreak(fd)
             while rclpy.ok() and not self.shutdown_requested:
+                #select留出0.05秒超时，让线程能检查rclpy.ok()和退出标志。
                 readable, _, _ = select.select([sys.stdin], [], [], 0.05)
                 if readable:
                     key = sys.stdin.read(1)
@@ -212,9 +237,11 @@ class FigureEightTurtle(Node):
                         self._request_shutdown_by_key()
                         return
         finally:
+            # 无论退出正常与否，都恢复终端设置，避免终端回显状态被破坏。
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
     def _request_shutdown_by_key(self):
+        """按键退出：先发布零速度停止小海龟，再关闭ROS2"""
         if self.shutdown_requested:
             return
 
@@ -226,6 +253,7 @@ class FigureEightTurtle(Node):
         rclpy.try_shutdown()
 
     def _quit_signal_callback(self, msg):
+        """收到其他节点发布的quit_signal=True后停止运动并退出。"""
         if msg.data:
             self.publisher.publish(Twist())
             self.get_logger().info('Received quit signal. Stopping turtle and exiting.')
@@ -233,6 +261,7 @@ class FigureEightTurtle(Node):
 
 
 def main(args=None):
+    """ROS2 可执行入口函数"""
     rclpy.init(args=args)
     node = FigureEightTurtle()
 
@@ -242,6 +271,7 @@ def main(args=None):
         pass
     finally:
         if rclpy.ok():
+            # 退出前再发一次零速度，确保小海龟停下来。
             node.publisher.publish(Twist())
         node.destroy_node()
         rclpy.try_shutdown()

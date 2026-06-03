@@ -1,11 +1,17 @@
+# RViz 默认布局配置。
+# launch 启动 RViz 时会通过 -d 参数加载该文件。
 Panels:
+  # Displays 面板用于查看和开关 Grid、MarkerArray 等显示项。
   - Class: rviz_common/Displays
     Name: Displays
+  # Views 面板用于查看和调整相机视角参数。
   - Class: rviz_common/Views
     Name: Views
+
 Visualization Manager:
   Class: ""
   Displays:
+    # 地面网格，帮助判断锥桶点在 XY 平面上的相对位置。
     - Alpha: 0.5
       Cell Size: 1
       Class: rviz_default_plugins/Grid
@@ -19,6 +25,8 @@ Visualization Manager:
       Plane Cell Count: 40
       Reference Frame: <Fixed Frame>
       Value: true
+
+    # 锥桶 MarkerArray 显示项，订阅 cone_map_visualizer 发布的 topic。
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Marker Topic:
@@ -29,6 +37,7 @@ Visualization Manager:
         Value: /visualization/cone_markers
       Name: Cone Markers
       Namespaces:
+        # 四个命名空间与 C++ 节点中 marker.ns 的取值一致，可单独开关。
         cones_blue: true
         cones_red: true
         cones_unknown: true
@@ -37,17 +46,21 @@ Visualization Manager:
       Value: true
   Enabled: true
   Global Options:
+    # 深色背景便于观察彩色锥桶点。
     Background Color: 30; 30; 30
+    # Fixed Frame 与 launch 中静态 TF 的 world 坐标系对应。
     Fixed Frame: world
     Frame Rate: 30
   Name: root
   Tools:
+    # RViz 交互工具：拖拽、移动相机、选择对象。
     - Class: rviz_default_plugins/Interact
     - Class: rviz_default_plugins/MoveCamera
     - Class: rviz_default_plugins/Select
   Value: true
   Views:
     Current:
+      # Orbit 视角适合从斜上方查看赛道锥桶地图。
       Class: rviz_default_plugins/Orbit
       Distance: 65
       Focal Point:
@@ -58,6 +71,8 @@ Visualization Manager:
       Pitch: 1.1
       Target Frame: <Fixed Frame>
       Yaw: 4.7
+
+# RViz 窗口初始尺寸。
 Window Geometry:
   Height: 900
   Width: 1400

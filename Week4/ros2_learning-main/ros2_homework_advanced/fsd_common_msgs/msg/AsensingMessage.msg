@@ -1,90 +1,58 @@
-# # message of Asensing perception result.It is INS data. 
-# Header header         # standard ROS message header
-# uint64 frame_id_num  
-# float32 acc_x
-# float32 acc_y
-# float32 acc_z
-# float32 gyro_x
-# float32 gyro_y
-# float32 gyro_z
-# float32 pitch
-# float32 roll
-# float32 heading_angle
-# float32 h
-# uint64 ull_timestamp
-# float64 lat
-# float64 lon
-# float32 vn
-# float32 ve
-# float32 vh
-# uint32 gps_flag_pos
-# uint32 num_sv
-# uint32 gps_flag_heading
-# uint64 gps_age
-# uint32 car_status
-# uint32 status
-# float32 std_lat
-# float32 std_lon
-# float32 std_local_height
-# float32 std_heading
-# float32 utc_year
-# float32 utc_month
-# float32 utc_day
-# float32 utc_hour
-# float32 utc_min
-# float32 utc_sec
-# float64 utc_msec
+# Asensing 组合惯导输出消息，包含定位、姿态、速度、加速度和状态信息。
+std_msgs/Header header              # 标准消息头，记录时间戳和坐标系。
+uint64 frame_id_num                 # 设备或驱动输出的帧序号。
 
+# 经纬高定位结果。
+float64 lat                         # 纬度。
+float64 lon                         # 经度。
+float64 h                           # 高程/高度。
 
-# message of Asensing perception result.It is INS data. 
-std_msgs/Header header         # standard ROS message header
-uint64 frame_id_num  
-float64 lat
-float64 lon
-float64 h
+# 北东地速度分量。
+float64 vn                          # 北向速度。
+float64 ve                          # 东向速度。
+float64 vh                          # 垂向速度或高度方向速度。
 
-float64 vn
-float64 ve
-float64 vh
+# 姿态角。
+float64 roll                        # 横滚角。
+float64 pitch                       # 俯仰角。
+float64 heading_angle               # 航向角。
 
-float64 roll
-float64 pitch
-float64 heading_angle
+# 陀螺仪角速度。
+float64 gyro_x                      # x 轴角速度。
+float64 gyro_y                      # y 轴角速度。
+float64 gyro_z                      # z 轴角速度。
 
-float64 gyro_x
-float64 gyro_y
-float64 gyro_z
+# 加速度计输出。
+float64 acc_x                       # x 轴加速度。
+float64 acc_y                       # y 轴加速度。
+float64 acc_z                       # z 轴加速度。
 
-float64 acc_x
-float64 acc_y
-float64 acc_z
+# 定位标准差，用于评估定位结果可信度。
+float32 std_lat                     # 纬度标准差。
+float32 std_lon                     # 经度标准差。
+float32 std_local_height            # 本地高度标准差。
 
-float32 std_lat
-float32 std_lon
-float32 std_local_height
+# 速度标准差。
+float32 north_velocity_std          # 北向速度标准差。
+float32 east_velocity_std           # 东向速度标准差。
+float32 ground_velocity_std         # 地面速度标准差。
 
-float32 north_velocity_std
-float32 east_velocity_std
-float32 ground_velocity_std
+# 姿态标准差。
+float32 roll_std                    # 横滚角标准差。
+float32 pitch_std                   # 俯仰角标准差。
+float32 std_heading                 # 航向角标准差。
 
+# 设备和 GPS 状态。
+uint32 status                       # 惯导综合状态码。
+uint32 gps_flag_pos                 # GPS 定位状态标志。
 
-float32 roll_std
-float32 pitch_std
-float32 std_heading 
+float64 gps_week_number             # GPS 周编号。
 
+float64 ull_timestamp               # 设备原始时间戳。
 
-uint32 status
-uint32 gps_flag_pos
+float32 temperature                 # 设备温度。
 
-float64 gps_week_number
+uint32 car_status                   # 车辆或设备工作状态码。
 
-float64 ull_timestamp
-
-float32 temperature
-
-uint32 car_status
-
-
-
-uint32 gps_flag_heading
-uint32 num_sv
+uint32 gps_flag_heading             # GPS 航向状态标志。
+uint32 num_sv                       # 可用卫星数量。

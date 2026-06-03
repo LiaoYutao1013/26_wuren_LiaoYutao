@@ -1,13 +1,24 @@
+// 锥桶地图消息，按颜色分类保存整张地图中的锥桶。
+
 #include "std_msgs/msg/Header.idl"
 #include "fsd_common_msgs/msg/Cone.idl"
 
 module fsd_common_msgs {
   module msg {
     struct Map {
+      // 标准消息头，包含时间戳和地图坐标系 frame_id。
       std_msgs::msg::Header header;
+
+      // 黄色锥桶集合。
       sequence<fsd_common_msgs::msg::Cone> cone_yellow;
+
+      // 蓝色锥桶集合。
       sequence<fsd_common_msgs::msg::Cone> cone_blue;
+
+      // 红色锥桶集合。
       sequence<fsd_common_msgs::msg::Cone> cone_red;
+
+      // 未识别或未分类颜色的锥桶集合。
       sequence<fsd_common_msgs::msg::Cone> cone_unknown;
     };
   };
