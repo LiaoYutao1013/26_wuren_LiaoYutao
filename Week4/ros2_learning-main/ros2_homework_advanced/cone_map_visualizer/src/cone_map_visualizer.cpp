@@ -1,5 +1,3 @@
-// 将 fsd_common_msgs/msg/Map 中的锥桶地图转换为 RViz 可显示的 MarkerArray。
-
 #include <functional>
 #include <memory>
 #include <string>
@@ -11,37 +9,34 @@
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 
-// ConeMapVisualizer 节点负责：
-// 1. 订阅 SLAM/建图节点发布的锥桶地图；
-// 2. 按颜色把锥桶分成 blue/red/unknown/yellow 四组；
-// 3. 生成 SPHERE_LIST 类型的 Marker，发布给 RViz 显示。
+/* ConeMapVisualizer 节点负责
+1. 订阅 SLAM/建图节点发布的锥桶地图；
+2. 按颜色把锥桶分成 blue/red/unknown/yellow 四组；
+3. 生成 SPHERE_LIST 类型的 Marker，发布给 RViz 显示。
+*/
+
 class ConeMapVisualizer : public rclcpp::Node
 {
 public:
   ConeMapVisualizer()
   : Node("cone_map_visualizer")
   {
-    // 输入地图 topic，默认与作业 bag 中的地图 topic 保持一致。
     input_topic_ = this->declare_parameter<std::string>("input_topic", "/estimation/slam/map");
-
-    // 输出 MarkerArray topic，RViz 配置中会订阅这个 topic。
     marker_topic_ =
       this->declare_parameter<std::string>("marker_topic", "/visualization/cone_markers");
-
-    // 如果非空，则强制 Marker 使用该坐标系；否则优先使用 Map.header.frame_id。
     frame_override_ = this->declare_parameter<std::string>("frame_override", "");
 
-    // Marker 的球体直径缩放值，控制 RViz 中锥桶点的显示大小。
+    //Marker的球体直径缩放值，控制RViz中锥桶点的显示大小。
     marker_scale_ = this->declare_parameter<double>("marker_scale", 0.45);
 
-    // z_offset 用于把球体抬高一点，避免和地面网格重合导致显示不明显。
+    //z_offset用于抬高marker，这样更好观察。
     z_offset_ = this->declare_parameter<double>("z_offset", 0.18);
 
-    // 发布 MarkerArray；队列长度 10 可以应对短时间内 RViz 未及时消费的情况。
+    //发布MarkerArray，队列长度10，留一部分作冗余。
     marker_pub_ =
       this->create_publisher<visualization_msgs::msg::MarkerArray>(marker_topic_, 10);
 
-    // 订阅地图消息。收到新地图时，handleMap 会重新生成整组可视化 Marker。
+    // 订阅地图消息。收到新地图时，handleMap会重新生成整组可视化 Marker。
     map_sub_ = this->create_subscription<fsd_common_msgs::msg::Map>(
       input_topic_,
       rclcpp::QoS(10),
@@ -55,7 +50,7 @@ public:
   }
 
 private:
-  // 生成 RGBA 颜色结构体，简化后面为不同颜色锥桶配置 Marker 的代码。
+  // 生成RGBA颜色结构体，简化为不同颜色锥桶配置Marker的代码。
   static std_msgs::msg::ColorRGBA makeColor(float r, float g, float b, float a = 1.0F)
   {
     std_msgs::msg::ColorRGBA color;
@@ -81,8 +76,8 @@ private:
     return "world";
   }
 
-  // 用当前 ROS 时钟生成 Marker 时间戳。
-  // 手动拆 sec/nanosec 是为了得到 builtin_interfaces::msg::Time 类型。
+  //用当前ROS时钟生成Marker时间戳。
+  //得到 builtin_interfaces::msg::Time 类型。
   builtin_interfaces::msg::Time makeCurrentStamp() const
   {
     const auto now_ns = this->get_clock()->now().nanoseconds();
@@ -92,8 +87,8 @@ private:
     return stamp;
   }
 
-  // 将某一种颜色的锥桶序列转换成一个 SPHERE_LIST Marker。
-  // ConeSequenceT 使用模板，是为了兼容不同容器类型的 cone_* 字段。
+  //将某一种颜色的锥桶序列转换成一个SPHERE_LIST Marker。
+  //ConeSequenceT使用模板，是为了兼容不同容器类型的cone_*字段。
   template<typename ConeSequenceT>
   visualization_msgs::msg::Marker makeConeMarker(
     const std::string & frame_id,
@@ -107,31 +102,30 @@ private:
     marker.header.frame_id = frame_id;
     marker.header.stamp = stamp;
 
-    // namespace + id 唯一确定一个 Marker，RViz 会用同名 Marker 覆盖旧数据。
+    //namespace + id唯一确定一个Marker，RViz用同名Marker覆盖旧数据。
     marker.ns = ns;
     marker.id = id;
 
-    // SPHERE_LIST 可以用一个 Marker 表示多个同尺寸球体，比逐个发布更轻量。
+    //SPHERE_LIST可以用一个Marker表示多个同尺寸球体，比逐个发布更轻量。
     marker.type = visualization_msgs::msg::Marker::SPHERE_LIST;
     marker.action = visualization_msgs::msg::Marker::ADD;
 
-    // 单位四元数表示无旋转；SPHERE_LIST 的球体本身不依赖姿态。
+    //单位四元数表示无旋转；SPHERE_LIST 的球体本身不依赖姿态。
     marker.pose.orientation.w = 1.0;
 
-    // scale 三个方向相同，使每个锥桶点显示为球体。
+    //scale 三个方向相同，使每个锥桶点显示为球体。
     marker.scale.x = marker_scale_;
     marker.scale.y = marker_scale_;
     marker.scale.z = marker_scale_;
 
     marker.color = color;
 
-    // lifetime 为 0 表示 Marker 不自动过期，由后续同 ns/id 的 Marker 更新。
+    //lifetime为0表示Marker不自动过期，由后续同ns/id的Marker更新。
     marker.lifetime.sec = 0;
     marker.lifetime.nanosec = 0;
 
     marker.points.reserve(cones.size());
     for (const auto & cone : cones) {
-      // 复制原始位置后只调整 z，高度偏移不会影响输入地图数据。
       auto point = cone.position;
       point.z += z_offset_;
       marker.points.push_back(point);
@@ -140,7 +134,7 @@ private:
     return marker;
   }
 
-  // 地图订阅回调：把四类锥桶分别转换成 Marker，再一次性发布 MarkerArray。
+  //地图订阅回调,把四类锥桶分别转换成Marker，再一次性发布MarkerArray。
   void handleMap(const fsd_common_msgs::msg::Map::SharedPtr msg)
   {
     const auto frame_id = resolveFrame(msg);
@@ -148,7 +142,7 @@ private:
 
     visualization_msgs::msg::MarkerArray marker_array;
 
-    // 蓝色锥桶。
+    //以下是蓝、红、未知、黄色锥桶的Marker配置，每类锥桶一个Marker，ns区分颜色，id区分同一颜色的不同Marker（这里只有一个）。
     marker_array.markers.push_back(makeConeMarker(
       frame_id,
       marker_stamp,
@@ -157,7 +151,6 @@ private:
       msg->cone_blue,
       makeColor(0.05F, 0.20F, 1.00F)));
 
-    // 红色锥桶。
     marker_array.markers.push_back(makeConeMarker(
       frame_id,
       marker_stamp,
@@ -166,7 +159,6 @@ private:
       msg->cone_red,
       makeColor(1.00F, 0.05F, 0.02F)));
 
-    // 未知颜色锥桶，用灰色显示，便于和已分类锥桶区分。
     marker_array.markers.push_back(makeConeMarker(
       frame_id,
       marker_stamp,
@@ -175,7 +167,6 @@ private:
       msg->cone_unknown,
       makeColor(0.78F, 0.78F, 0.78F)));
 
-    // 黄色锥桶。
     marker_array.markers.push_back(makeConeMarker(
       frame_id,
       marker_stamp,
@@ -186,7 +177,7 @@ private:
 
     marker_pub_->publish(marker_array);
 
-    // 节流日志每 2 秒最多打印一次，既能观察数据量，又不会刷屏。
+    //打印日志
     RCLCPP_INFO_THROTTLE(
       this->get_logger(),
       *this->get_clock(),
@@ -199,25 +190,23 @@ private:
       msg->cone_yellow.size());
   }
 
-  // 参数缓存：构造函数中读取，回调中重复使用。
+  //参数缓存：构造函数中读取，回调中重复使用。
   std::string input_topic_;
   std::string marker_topic_;
   std::string frame_override_;
   double marker_scale_;
   double z_offset_;
 
-  // ROS2 通信对象。SharedPtr 由 rclcpp 管理生命周期。
+  //ROS2 通信对象；SharedPtr由rclcpp管理生命周期。
   rclcpp::Subscription<fsd_common_msgs::msg::Map>::SharedPtr map_sub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
 };
 
 int main(int argc, char ** argv)
 {
-  // 初始化 ROS2 C++ 客户端库，创建节点并进入回调循环。
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<ConeMapVisualizer>());
 
-  // spin 返回后关闭 ROS2 上下文，释放节点和通信资源。
   rclcpp::shutdown();
   return 0;
 }

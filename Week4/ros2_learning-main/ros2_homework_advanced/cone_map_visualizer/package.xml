@@ -1,9 +1,5 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
-<!--
-  cone_map_visualizer 包描述文件。
-  该包负责编译 C++ 可视化节点，并声明 RViz、rosbag、TF 等运行依赖。
--->
 <package format="3">
   <name>cone_map_visualizer</name>
   <version>0.0.0</version>
@@ -11,16 +7,13 @@
   <maintainer email="user@todo.todo">user</maintainer>
   <license>TODO</license>
 
-  <!-- C++ ROS2 包使用 ament_cmake 构建。 -->
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <!-- 节点编译和运行都需要的核心依赖。 -->
   <depend>fsd_common_msgs</depend>
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
   <depend>visualization_msgs</depend>
 
-  <!-- launch 文件运行时查找资源、启动 RViz、播放 bag 和发布静态 TF 所需依赖。 -->
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
@@ -28,12 +21,10 @@
   <exec_depend>rviz2</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
 
-  <!-- 可选测试和 lint 依赖，仅在 BUILD_TESTING 开启时使用。 -->
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
   <export>
-    <!-- 告诉 ament 该包按 CMake 包方式构建。 -->
     <build_type>ament_cmake</build_type>
   </export>
 </package>
