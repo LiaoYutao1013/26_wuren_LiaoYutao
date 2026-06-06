@@ -20,17 +20,12 @@ f(x, y) = 1/2 * (x - 3)^2 + 10/2 * (y - 3)^2
 
 ### C++ 部分
 
-在当前目录运行：
-
-```powershell
-cmake -G Ninja -S . -B build -DCMAKE_CXX_COMPILER=g++
-cmake --build build
-.\build\robot_dog_optimization.exe
-```
-
-如果系统默认 CMake 生成器已经配置好，也可以直接用 `cmake -S . -B build`。Linux/macOS 最后一步通常是：
+在作业2目录运行
 
 ```bash
+mkdir build
+cd build
+cmake ..
 ./build/robot_dog_optimization
 ```
 
