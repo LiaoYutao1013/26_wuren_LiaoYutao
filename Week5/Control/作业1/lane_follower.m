@@ -30,11 +30,11 @@
     
         % 选PID算法进行小车控制。
         % 思路：1.计算当前车辆位置与参考轨迹的误差（距离，横向误差）；2.根据误差调整前轮转角 sigma。
-
+        % 
         % 计算当前车辆位置与参考轨迹的最近点
         distances = sqrt((X_ref - X).^2 + (Y_ref - Y).^2);
         [~, closest_idx] = min(distances);
-        e = distances(closest_idx); % 横向误差
+        e = distances(closest_idx); % 误差
         % PID控制器参数
         Kp = 0.5; Ki = 0.1; Kd = 0.05;
         % 更新积分误差和微分误差
