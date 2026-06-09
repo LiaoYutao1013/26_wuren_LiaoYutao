@@ -6,10 +6,12 @@
 
 ### C++ 部分
 
-编译完后在当前目录运行
+在作业2目录运行
 
 ```bash
-cmake build
+mkdir build
+cd build
+cmake ..
 ./build/robot_dog_optimization
 ```
 
