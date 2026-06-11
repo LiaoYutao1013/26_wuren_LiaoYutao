@@ -9,6 +9,7 @@
 
 namespace {
 
+// Q1梯度下降实验共用的停止条件。
 constexpr double kTolerance = 1e-3;
 constexpr int kMaxIterations = 100000;
 
@@ -17,15 +18,18 @@ Eigen::Vector2d Target() {
 }
 
 double Objective(const Eigen::Vector2d& x) {
+  // 目标函数
   const double dx = x(0) - 3.0;
   const double dy = x(1) - 3.0;
   return 0.5 * dx * dx + 5.0 * dy * dy;
 }
 
 Eigen::Vector2d Gradient(const Eigen::Vector2d& x) {
+  // 目标函数的梯度
   return Eigen::Vector2d{x(0) - 3.0, 10.0 * (x(1) - 3.0)};
 }
 
+// 记录某学习率下的一次梯度下降结果。
 struct GradientResult {
   double eta = 0.0;
   int iterations = 0;
@@ -35,9 +39,11 @@ struct GradientResult {
 };
 
 GradientResult RunGradientDescent(double eta) {
+  // 从原点开始迭代
   Eigen::Vector2d x{0.0, 0.0};
 
   for (int iteration = 1; iteration <= kMaxIterations; ++iteration) {
+    // 梯度下降更新
     x = x - eta * Gradient(x);
     const double error = (x - Target()).norm();
     if (error < kTolerance) {
@@ -59,6 +65,7 @@ void PrintQ1() {
   std::cout << std::fixed << std::setprecision(6);
   std::cout << "eta        iterations  x          y          error       status\n";
 
+  // 尝试多个步长，观察收敛速度以及eta接近0.2时的不稳定性。
   for (const double eta : learning_rates) {
     const GradientResult result = RunGradientDescent(eta);
     std::cout << std::setw(10) << result.eta << "  " << std::setw(10)
@@ -72,6 +79,7 @@ void PrintQ1() {
 }
 
 void PrintQ2() {
+  // 由于 [3, 3]^T 不满足 x + y <= 4，最优点处该不等式约束为活跃约束。
   const double mu = 20.0 / 11.0;
   const Eigen::Vector2d solution{13.0 / 11.0, 31.0 / 11.0};
 
@@ -84,10 +92,12 @@ void PrintQ2() {
 }
 
 void PrintQ3() {
+  // OSQP 标准形式中的二次项矩阵 P。
   Eigen::Matrix2d p = Eigen::Matrix2d::Zero();
   p(0, 0) = 1.0;
   p(1, 1) = 10.0;
 
+  // 线性项 q，以及约束矩阵 A。
   const Eigen::Vector2d q{-3.0, -30.0};
   const Eigen::RowVector2d a{1.0, 1.0};
   const double lower_bound = -std::numeric_limits<double>::infinity();
@@ -101,6 +111,7 @@ void PrintQ3() {
   std::cout << "l = [" << lower_bound << "]\n";
   std::cout << "u = [" << upper_bound << "]\n\n";
 
+  // 当上界约束活跃时，求解对应的等式约束 KKT 系统：
   Eigen::Matrix3d kkt = Eigen::Matrix3d::Zero();
   kkt.block<2, 2>(0, 0) = p;
   kkt.block<2, 1>(0, 2) = a.transpose();
@@ -115,7 +126,7 @@ void PrintQ3() {
   std::cout << "Run scripts/q3_osqp.py to solve the same QP with OSQP.\n";
 }
 
-}  // namespace
+} 
 
 int main() {
   PrintQ1();
