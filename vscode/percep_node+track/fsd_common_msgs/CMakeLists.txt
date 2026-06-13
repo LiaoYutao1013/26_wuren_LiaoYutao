@@ -11,9 +11,9 @@ find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Cone.msg"
-  "msg/ConeDetections.msg"
-  "msg/Map.msg"
+  "msg/Cone.idl"
+  "msg/ConeDetections.idl"
+  "msg/Map.idl"
   DEPENDENCIES geometry_msgs std_msgs
 )
 
