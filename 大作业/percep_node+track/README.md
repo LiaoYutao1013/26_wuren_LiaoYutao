@@ -601,6 +601,62 @@ libignition-rendering-ogre2
 - `/cmd_vel` 非 0，但 `/sensors/wheel_odom` 仍是 0：驱动插件或 Gazebo bridge 没吃到速度。
 - `/sensors/wheel_odom` 非 0，但画面里车不动：优先查 Gazebo GUI 是否卡住、模型状态是否更新，或画面是否看错对象。
 
+如果 Gazebo 和 RViz 都已经打开，Gazebo 里能看到车和锥桶，但 RViz 显示 `No Image` 且车不动，按下面的顺序进一步确认：
+
+1. 确认不是只打开了 Gazebo/RViz，而是完整 ROS 栈都启动了：
+
+   ```bash
+   ros2 node list
+   ```
+
+   应该至少看到：
+
+   ```text
+   /ros_gz_bridge
+   /robot_state_publisher
+   /localization_fusion
+   /track_perception
+   /cone_mapper
+   /right_angle_planner
+   /pure_pursuit_controller
+   ```
+
+   如果这些节点缺失，重新用对应 launch 启动完整工程，不要只单独打开 Gazebo 或 RViz。
+
+2. 绕过规划控制，直接测试 Gazebo 车辆能否响应速度：
+
+   ```bash
+   ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 1.0}, angular: {z: 0.0}}" -r 10
+   ```
+
+   如果 ROS 直发不动，再直接走 Gazebo Transport：
+
+   ```bash
+   gz topic -t /cmd_vel -m gz.msgs.Twist -p "linear: {x: 1.0} angular: {z: 0.0}"
+   ```
+
+   ROS 直发能动，说明车辆驱动正常，问题在规划控制输出。Gazebo Transport 直发能动但 ROS 直发不动，说明 ROS/Gazebo bridge 或 topic 方向有问题。两者都不动，优先查 SDF/URDF 的 DiffDrive 插件、topic 和车轮关节。
+
+3. 排查 RViz `No Image`：
+
+   ```bash
+   ros2 topic list | grep camera
+   ros2 topic hz /sensors/camera/image_raw
+   ros2 topic echo /sensors/camera/camera_info --once
+   gz topic -l | grep camera
+   ```
+
+   `gz topic` 有相机但 ROS 没有，说明 camera bridge 没通。Gazebo 侧也没有相机 topic，说明 Gazebo sensor 没发布。ROS 侧有图像频率但 RViz 仍 `No Image`，再检查 RViz Image display 的 topic 是否是 `/sensors/camera/image_raw`。
+
+4. 确认当前终端 source 的发行版和工作区一致：
+
+   ```bash
+   printenv ROS_DISTRO
+   echo $AMENT_PREFIX_PATH
+   ```
+
+   不要在同一个终端混 source 不同 ROS 2 发行版的 `/opt/ros/*/setup.bash` 和旧工作区 `install/setup.bash`。切换发行版或工作区后，打开新终端重新 source。
+
 ### xacro pi warning
 
 如果看到：
