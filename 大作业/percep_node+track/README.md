@@ -535,6 +535,72 @@ libignition-rendering-ogre2
 
 3. 如果仍然崩溃，继续用 `right_angle_wsl_headless.launch.py` 或 Gazebo Classic 路线验证课程算法链路。相机和 GPU 雷达属于渲染传感器，在 WSL 图形栈不稳定时最容易触发 OGRE 问题。
 
+### 全部启用后小车不动
+
+先不要改控制参数，按链路定位断点。控制节点只有在同时收到 `/localization/odom` 和 `/planning/centerline`，且路径至少有 2 个点时，才会发布非零 `/cmd_vel`；否则会持续发布停车指令。
+
+1. 先确认仿真时间在走：
+
+   ```bash
+   ros2 topic hz /clock
+   ```
+
+   如果 `/clock` 不发布或频率为 0，说明 Gazebo 暂停、崩溃，或 Gazebo/ROS bridge 没起来。使用 `use_sim_time:=true` 时，很多节点依赖 `/clock` 才会正常运行。
+
+2. 看控制器是否发出非零速度：
+
+   ```bash
+   ros2 topic echo /cmd_vel --once
+   ros2 topic hz /cmd_vel
+   ```
+
+   如果 `linear.x` 和 `angular.z` 都是 0，继续查定位和规划。
+
+3. 查定位输入和输出：
+
+   ```bash
+   ros2 topic echo /localization/odom --once
+   ros2 topic echo /localization/pose --once
+   ros2 topic echo /sensors/wheel_odom --once
+   ros2 topic echo /sensors/imu/data_raw --once
+   ros2 topic echo /sensors/gps/fix --once
+   ros2 topic echo /sensors/magnetic_field --once
+   ```
+
+   `/localization/odom` 没有输出时，控制器不会动车。基础传感器没输出时，先回到对应仿真入口检查传感器插件或 bridge。
+
+4. 查规划路径：
+
+   ```bash
+   ros2 topic echo /planning/centerline --once
+   ros2 topic echo /estimation/slam/map --once
+   ```
+
+   `/planning/centerline` 没有输出时，控制器也会停车。当前规划节点默认 `fallback_path:=true`，理论上即使锥桶建图不足，也应该发布解析路径；如果没有输出，优先检查 `right_angle_planner` 是否启动、`/clock` 是否正常。
+
+5. 如果 `/cmd_vel` 非零但车仍不动，查驱动插件或桥接。
+
+   Classic 路线：
+
+   ```bash
+   ros2 topic info /cmd_vel -v
+   ros2 topic echo /sensors/wheel_odom --once
+   ```
+
+   Gazebo Sim 路线：
+
+   ```bash
+   gz topic -l | grep cmd_vel
+   gz topic -l | grep wheel
+   ros2 topic echo /sensors/wheel_odom --once
+   ```
+
+判断标准：
+
+- `/cmd_vel` 是 0：上层算法没给速度，查定位和规划。
+- `/cmd_vel` 非 0，但 `/sensors/wheel_odom` 仍是 0：驱动插件或 Gazebo bridge 没吃到速度。
+- `/sensors/wheel_odom` 非 0，但画面里车不动：优先查 Gazebo GUI 是否卡住、模型状态是否更新，或画面是否看错对象。
+
 ### xacro pi warning
 
 如果看到：
