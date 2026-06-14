@@ -32,6 +32,11 @@ compile_commands.json
 *.ilk
 *.exp
 
+# Required encrypted package runtime. Keep generic *.so ignored, but track
+# the PyArmor runtime needed by sim_perception/sim_node.py.
+!大作业/percep_node+track/sim_perception/sim_perception/pyarmor_runtime_000000/
+!大作业/percep_node+track/sim_perception/sim_perception/pyarmor_runtime_000000/pyarmor_runtime.so
+
 # Generated dependency files
 *.d
 *.dep
