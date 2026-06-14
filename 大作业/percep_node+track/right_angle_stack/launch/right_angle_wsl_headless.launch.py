@@ -5,96 +5,111 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command, EnvironmentVariable, LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import Command, EnvironmentVariable, LaunchConfiguration
 from launch_ros.actions import Node
-from launch_ros.substitutions import FindPackageShare
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
     stack_share = get_package_share_directory('right_angle_stack')
     track_share = get_package_share_directory('right_angle_track')
-    gazebo_share = get_package_share_directory('gazebo_ros')
+    ros_gz_sim_share = get_package_share_directory('ros_gz_sim')
 
+    world_path = os.path.join(track_share, 'worlds', 'right_angle_wsl_headless.sdf')
+    robot_sdf = os.path.join(stack_share, 'models', 'right_angle_car_wsl_headless', 'model.sdf')
     robot_xacro = os.path.join(stack_share, 'urdf', 'right_angle_car.urdf.xacro')
     rviz_config = os.path.join(stack_share, 'rviz', 'right_angle.rviz')
     stack_config = os.path.join(stack_share, 'config', 'right_angle_stack.yaml')
     track_sdf = os.path.join(track_share, 'models', 'shixi', 'model.sdf')
+    track_models = os.path.join(track_share, 'models')
+    stack_models = os.path.join(stack_share, 'models')
 
     model_name = LaunchConfiguration('model_name')
+    gz_args = LaunchConfiguration('gz_args')
     use_rviz = LaunchConfiguration('use_rviz')
-    use_gazebo = LaunchConfiguration('use_gazebo')
+    use_sim_time = LaunchConfiguration('use_sim_time')
     use_builtin_perception = LaunchConfiguration('use_builtin_perception')
     use_sim_perception = LaunchConfiguration('use_sim_perception')
-    use_synthetic_sensors = LaunchConfiguration('use_synthetic_sensors')
     perception_map_topic = LaunchConfiguration('perception_map_topic')
     perception_detections_topic = LaunchConfiguration('perception_detections_topic')
+    sim_time_param = ParameterValue(use_sim_time, value_type=bool)
 
-    robot_description = {
-        'robot_description': Command(['xacro', ' ', robot_xacro])
-    }
-
-    gazebo_models = PathJoinSubstitution([FindPackageShare('right_angle_track'), 'models'])
-    gazebo_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(gazebo_share, 'launch', 'gazebo.launch.py')),
-        launch_arguments={
-            'world': os.path.join(track_share, 'worlds', 'right_angle.world'),
-            'verbose': 'true',
-        }.items(),
-        condition=IfCondition(use_gazebo),
-    )
+    gz_resource_path = [
+        track_models,
+        os.pathsep,
+        stack_models,
+        os.pathsep,
+        EnvironmentVariable('GZ_SIM_RESOURCE_PATH', default_value=''),
+    ]
 
     return LaunchDescription([
         DeclareLaunchArgument('model_name', default_value='racecar'),
-        DeclareLaunchArgument('use_gazebo', default_value='true'),
-        DeclareLaunchArgument('use_rviz', default_value='true'),
+        DeclareLaunchArgument(
+            'gz_args',
+            default_value=['-r -s -v 4 ', world_path],
+            description='Gazebo Sim server-only arguments for WSL headless debugging.',
+        ),
+        DeclareLaunchArgument('use_sim_time', default_value='true'),
+        DeclareLaunchArgument('use_rviz', default_value='false'),
         DeclareLaunchArgument('use_builtin_perception', default_value='true'),
         DeclareLaunchArgument('use_sim_perception', default_value='false'),
-        DeclareLaunchArgument('use_synthetic_sensors', default_value='false'),
         DeclareLaunchArgument('perception_map_topic', default_value='/perception/cones'),
         DeclareLaunchArgument('perception_detections_topic', default_value='/perception/cone_detections'),
-        SetEnvironmentVariable(
-            name='GAZEBO_MODEL_PATH',
-            value=[gazebo_models, ':', EnvironmentVariable('GAZEBO_MODEL_PATH', default_value='')],
+        SetEnvironmentVariable(name='GZ_SIM_RESOURCE_PATH', value=gz_resource_path),
+        SetEnvironmentVariable(name='IGN_GAZEBO_RESOURCE_PATH', value=gz_resource_path),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(ros_gz_sim_share, 'launch', 'gz_sim.launch.py')
+            ),
+            launch_arguments={
+                'gz_args': gz_args,
+            }.items(),
         ),
-        gazebo_launch,
+        Node(
+            package='ros_gz_sim',
+            executable='create',
+            name='spawn_right_angle_car',
+            output='screen',
+            arguments=[
+                '-world', 'right_angle_world',
+                '-file', robot_sdf,
+                '-name', model_name,
+                '-x', '0.0',
+                '-y', '-15.0',
+                '-z', '0.0',
+                '-Y', '1.57079632679',
+            ],
+        ),
+        Node(
+            package='ros_gz_bridge',
+            executable='parameter_bridge',
+            name='ros_gz_bridge',
+            output='screen',
+            arguments=[
+                '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+                '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist',
+                '/sensors/wheel_odom@nav_msgs/msg/Odometry[gz.msgs.Odometry',
+                '/sensors/imu/data_raw@sensor_msgs/msg/Imu[gz.msgs.IMU',
+                '/sensors/gps/fix@sensor_msgs/msg/NavSatFix[gz.msgs.NavSat',
+                '/sensors/magnetic_field@sensor_msgs/msg/MagneticField[gz.msgs.Magnetometer',
+            ],
+        ),
         Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',
             name='robot_state_publisher',
             output='screen',
-            parameters=[robot_description, {'use_sim_time': True}],
-        ),
-        Node(
-            package='gazebo_ros',
-            executable='spawn_entity.py',
-            arguments=[
-                '-topic', 'robot_description',
-                '-entity', model_name,
-                '-x', '0.0',
-                '-y', '-15.0',
-                '-z', '0.02',
-                '-Y', '1.57079632679',
-            ],
-            output='screen',
-            condition=IfCondition(use_gazebo),
-        ),
-        Node(
-            package='right_angle_stack',
-            executable='sim_sensor_bridge',
-            name='sim_sensor_bridge',
-            output='screen',
-            parameters=[stack_config, {
-                'model_name': model_name,
-                'use_sim_time': True,
+            parameters=[{
+                'robot_description': Command(['xacro', ' ', robot_xacro]),
+                'use_sim_time': sim_time_param,
             }],
-            condition=IfCondition(use_synthetic_sensors),
         ),
         Node(
             package='right_angle_stack',
             executable='localization_fusion',
             name='localization_fusion',
             output='screen',
-            parameters=[stack_config, {'use_sim_time': True}],
+            parameters=[stack_config, {'use_sim_time': sim_time_param}],
         ),
         Node(
             package='right_angle_stack',
@@ -105,7 +120,7 @@ def generate_launch_description():
                 'track_sdf': track_sdf,
                 'map_topic': perception_map_topic,
                 'detections_topic': perception_detections_topic,
-                'use_sim_time': True,
+                'use_sim_time': sim_time_param,
             }],
             condition=IfCondition(use_builtin_perception),
         ),
@@ -124,7 +139,7 @@ def generate_launch_description():
             parameters=[stack_config, {
                 'perception_map_topic': perception_map_topic,
                 'perception_detections_topic': perception_detections_topic,
-                'use_sim_time': True,
+                'use_sim_time': sim_time_param,
             }],
         ),
         Node(
@@ -132,14 +147,14 @@ def generate_launch_description():
             executable='right_angle_planner',
             name='right_angle_planner',
             output='screen',
-            parameters=[stack_config, {'use_sim_time': True}],
+            parameters=[stack_config, {'use_sim_time': sim_time_param}],
         ),
         Node(
             package='right_angle_stack',
             executable='pure_pursuit_controller',
             name='pure_pursuit_controller',
             output='screen',
-            parameters=[stack_config, {'use_sim_time': True}],
+            parameters=[stack_config, {'use_sim_time': sim_time_param}],
         ),
         Node(
             package='rviz2',

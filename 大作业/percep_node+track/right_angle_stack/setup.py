@@ -22,6 +22,14 @@ setup(
         (os.path.join('share', package_name, 'urdf'), package_files('urdf', '*.xacro')),
         (os.path.join('share', package_name, 'rviz'), package_files('rviz', '*.rviz')),
         (os.path.join('share', package_name, 'config'), package_files('config', '*.yaml')),
+        (
+            os.path.join('share', package_name, 'models', 'right_angle_car_harmonic'),
+            package_files(os.path.join('models', 'right_angle_car_harmonic'), 'model.*'),
+        ),
+        (
+            os.path.join('share', package_name, 'models', 'right_angle_car_wsl_headless'),
+            package_files(os.path.join('models', 'right_angle_car_wsl_headless'), 'model.*'),
+        ),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
