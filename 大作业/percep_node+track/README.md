@@ -724,6 +724,63 @@ ros2 launch right_angle_stack right_angle_wsl_headless.launch.py \
   perception_detections_topic:=/your/detections/topic
 ```
 
+### sim_perception 跑不通时
+
+`sim_perception` 是 PyArmor 加密包，`sim_node.py` 启动时必须能导入同目录下的 `pyarmor_runtime_000000/pyarmor_runtime.so`。常见问题按下面顺序查：
+
+1. 先确认它真的被启动了，而不是还在跑内置感知：
+
+   ```bash
+   ros2 node list | grep perception
+   ```
+
+   需要看到 `sim_perception`，并且 launch 参数里 `use_builtin_perception:=false`、`use_sim_perception:=true`。
+
+2. 确认运行时库存在于安装目录：
+
+   ```bash
+   find install/sim_perception -name 'pyarmor_runtime.so' -ls
+   ```
+
+   如果找不到，先检查源码里是否存在：
+
+   ```bash
+   find sim_perception -name 'pyarmor_runtime.so' -ls
+   ```
+
+   缺文件时，先把源码同步完整，再重新构建：
+
+   ```bash
+   rm -rf build/sim_perception install/sim_perception
+   colcon build --symlink-install --packages-select sim_perception
+   source install/setup.bash
+   ```
+
+3. 确认 `.gitignore` 没有把这个必要库漏掉。
+   根目录现在保留了对该运行时库的例外规则，避免 `*.so` 误屏蔽。
+
+4. 确认 Python 和 ROS 发行版没有混用。
+   如果你当前环境是 Jazzy，Python 版本通常和 Humble 不同；加密包对 ABI 更敏感，不能混 source 不同发行版的工作区。
+
+   ```bash
+   printenv ROS_DISTRO
+   python3 --version
+   ```
+
+5. 直接测试加密运行时能否导入：
+
+   ```bash
+   python3 -c "from sim_perception.pyarmor_runtime_000000 import __pyarmor__; print('pyarmor ok')"
+   ```
+
+6. 如果模块能导入但节点仍起不来，再看依赖和运行时报错：
+
+   ```bash
+   ros2 run sim_perception sim_node
+   ```
+
+   常见依赖包括 `rclpy`、`tf2_ros`、`tf2_geometry_msgs`、`geometry_msgs`、`std_msgs`、`fsd_common_msgs`。
+
 ## 当前建议
 
 WSL 调试优先顺序：
