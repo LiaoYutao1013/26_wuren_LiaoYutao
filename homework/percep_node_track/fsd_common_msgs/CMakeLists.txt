@@ -15,9 +15,9 @@ find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "${CMAKE_CURRENT_SOURCE_DIR}:msg/Cone.msg"
-  "${CMAKE_CURRENT_SOURCE_DIR}:msg/ConeDetections.msg"
-  "${CMAKE_CURRENT_SOURCE_DIR}:msg/Map.msg"
+  "msg/Cone.idl"
+  "msg/ConeDetections.idl"
+  "msg/Map.idl"
   DEPENDENCIES geometry_msgs std_msgs
 )
 
