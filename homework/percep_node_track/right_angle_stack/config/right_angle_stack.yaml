@@ -5,6 +5,11 @@ localization_fusion:
     initial_x: 0.0
     initial_y: -15.0
     initial_yaw: 1.57079632679
+    gps_gain: 0.12
+    mag_gain: 0.0
+    use_first_gps_as_origin: true
+    gps_reject_distance: 8.0
+    mag_reject_angle: 1.2
 
 cone_mapper:
   ros__parameters:

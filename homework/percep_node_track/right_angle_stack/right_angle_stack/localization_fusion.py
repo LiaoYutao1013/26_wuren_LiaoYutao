@@ -25,6 +25,9 @@ class LocalizationFusion(Node):
         self.declare_parameter('gps_gain', 0.45)
         self.declare_parameter('mag_gain', 0.30)
         self.declare_parameter('magnetic_declination', 0.0)
+        self.declare_parameter('use_first_gps_as_origin', True)
+        self.declare_parameter('gps_reject_distance', 8.0)
+        self.declare_parameter('mag_reject_angle', 1.2)
         self.declare_parameter('gps_topic', '/sensors/gps/fix')
         self.declare_parameter('imu_topic', '/sensors/imu/data_raw')
         self.declare_parameter('wheel_odom_topic', '/sensors/wheel_odom')
@@ -35,13 +38,23 @@ class LocalizationFusion(Node):
         self.gps_gain = float(self.get_parameter('gps_gain').value)
         self.mag_gain = float(self.get_parameter('mag_gain').value)
         self.magnetic_declination = float(self.get_parameter('magnetic_declination').value)
+        self.use_first_gps_as_origin = bool(self.get_parameter('use_first_gps_as_origin').value)
+        self.gps_reject_distance = float(self.get_parameter('gps_reject_distance').value)
+        self.mag_reject_angle = float(self.get_parameter('mag_reject_angle').value)
 
-        self.x = float(self.get_parameter('initial_x').value)
-        self.y = float(self.get_parameter('initial_y').value)
+        self.initial_x = float(self.get_parameter('initial_x').value)
+        self.initial_y = float(self.get_parameter('initial_y').value)
+        self.x = self.initial_x
+        self.y = self.initial_y
         self.yaw = float(self.get_parameter('initial_yaw').value)
         self.forward_speed = 0.0
         self.yaw_rate = 0.0
         self.last_time = self.get_clock().now()
+        self.gps_ref_lat = self.origin_lat
+        self.gps_ref_lon = self.origin_lon
+        self.gps_reference_ready = not self.use_first_gps_as_origin
+        self.rejected_gps_count = 0
+        self.rejected_mag_count = 0
 
         self.pose_pub = self.create_publisher(PoseStamped, '/localization/pose', 10)
         self.odom_pub = self.create_publisher(Odometry, '/localization/odom', 10)
@@ -78,14 +91,30 @@ class LocalizationFusion(Node):
     def gps_to_local_xy(self, latitude_deg, longitude_deg):
         lat = math.radians(latitude_deg)
         lon = math.radians(longitude_deg)
-        x = EARTH_RADIUS_M * math.cos(self.origin_lat) * (lon - self.origin_lon)
-        y = EARTH_RADIUS_M * (lat - self.origin_lat)
+        x = self.initial_x + EARTH_RADIUS_M * math.cos(self.gps_ref_lat) * (lon - self.gps_ref_lon)
+        y = self.initial_y + EARTH_RADIUS_M * (lat - self.gps_ref_lat)
         return x, y
 
     def on_gps(self, msg):
         if math.isnan(msg.latitude) or math.isnan(msg.longitude):
             return
+        if not self.gps_reference_ready:
+            self.gps_ref_lat = math.radians(msg.latitude)
+            self.gps_ref_lon = math.radians(msg.longitude)
+            self.gps_reference_ready = True
+            self.get_logger().info(
+                'GPS reference initialized from first fix; first fix maps to initial pose '
+                f'({self.initial_x:.2f}, {self.initial_y:.2f}).'
+            )
         gps_x, gps_y = self.gps_to_local_xy(msg.latitude, msg.longitude)
+        if math.hypot(gps_x - self.x, gps_y - self.y) > self.gps_reject_distance:
+            self.rejected_gps_count += 1
+            if self.rejected_gps_count in (1, 20, 100):
+                self.get_logger().warn(
+                    'Rejected GPS fix far from fused pose: '
+                    f'gps=({gps_x:.2f}, {gps_y:.2f}), pose=({self.x:.2f}, {self.y:.2f}).'
+                )
+            return
         self.x = (1.0 - self.gps_gain) * self.x + self.gps_gain * gps_x
         self.y = (1.0 - self.gps_gain) * self.y + self.gps_gain * gps_y
 
@@ -98,12 +127,23 @@ class LocalizationFusion(Node):
             self.yaw_rate = msg.twist.twist.angular.z
 
     def on_magnetic_field(self, msg):
+        if self.mag_gain <= 0.0:
+            return
         mx = msg.magnetic_field.x
         my = msg.magnetic_field.y
         if abs(mx) + abs(my) < 1e-9:
             return
         measured_yaw = math.atan2(mx, my) - self.magnetic_declination
-        self.yaw += self.mag_gain * normalize_angle(measured_yaw - self.yaw)
+        yaw_error = normalize_angle(measured_yaw - self.yaw)
+        if abs(yaw_error) > self.mag_reject_angle:
+            self.rejected_mag_count += 1
+            if self.rejected_mag_count in (1, 20, 100):
+                self.get_logger().warn(
+                    'Rejected magnetometer heading jump: '
+                    f'measured={measured_yaw:.3f}, fused={self.yaw:.3f}, error={yaw_error:.3f}.'
+                )
+            return
+        self.yaw += self.mag_gain * yaw_error
         self.yaw = normalize_angle(self.yaw)
 
     def on_timer(self):
