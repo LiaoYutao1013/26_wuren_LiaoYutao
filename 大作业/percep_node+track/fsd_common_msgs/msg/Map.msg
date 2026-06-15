@@ -1,6 +1,6 @@
 # Cone map grouped by color.
 std_msgs/Header header
-fsd_common_msgs/Cone[] cone_yellow
-fsd_common_msgs/Cone[] cone_blue
-fsd_common_msgs/Cone[] cone_red
-fsd_common_msgs/Cone[] cone_unknown
+Cone[] cone_yellow
+Cone[] cone_blue
+Cone[] cone_red
+Cone[] cone_unknown
