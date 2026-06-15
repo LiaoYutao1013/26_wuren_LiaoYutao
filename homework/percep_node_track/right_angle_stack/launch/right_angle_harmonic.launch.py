@@ -52,8 +52,8 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument('use_sim_time', default_value='true'),
         DeclareLaunchArgument('use_rviz', default_value='false'),
-        DeclareLaunchArgument('use_builtin_perception', default_value='true'),
-        DeclareLaunchArgument('use_sim_perception', default_value='false'),
+        DeclareLaunchArgument('use_builtin_perception', default_value='false'),
+        DeclareLaunchArgument('use_sim_perception', default_value='true'),
         DeclareLaunchArgument('perception_map_topic', default_value='/perception/cones'),
         DeclareLaunchArgument('perception_detections_topic', default_value='/perception/cone_detections'),
         SetEnvironmentVariable(name='GZ_SIM_RESOURCE_PATH', value=gz_resource_path),
@@ -149,6 +149,7 @@ def generate_launch_description():
             executable='sim_node',
             name='sim_perception',
             output='screen',
+            parameters=[{'use_sim_time': sim_time_param}],
             condition=IfCondition(use_sim_perception),
         ),
         Node(
