@@ -190,7 +190,7 @@ source install/setup.bash
 
 ros2 launch right_angle_stack right_angle_harmonic.launch.py \
   use_rviz:=true \
-  gz_args:="-r -v 4 $(ros2 pkg prefix right_angle_track)/share/right_angle_track/worlds/right_angle_harmonic.sdf" #这里是为调试方便默认不开图形界面，要看GUI就手动设置参数
+  gz_args:="-r -v 4 $(ros2 pkg prefix right_angle_track)/share/right_angle_track/worlds/right_angle_harmonic.sdf" 
 ```
 
 这会启动：
