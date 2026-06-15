@@ -16,12 +16,11 @@
         <mass>0.45</mass>
       </inertial>
       <visual name='visual'>
-        <pose>0 0 0.28 0 0 0</pose>
+        <pose>0 0 0.152 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <radius>0.18</radius>
-            <length>0.56</length>
-          </cylinder>
+          <mesh>
+            <uri>model://blue_cone/meshes/cone_blue.dae</uri>
+          </mesh>
         </geometry>
         <material>
           <ambient>0.02 0.08 0.8 1</ambient>

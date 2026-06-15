@@ -791,3 +791,128 @@ WSL 调试优先顺序：
 4. 最后再尝试完整 Gazebo Sim、Gazebo GUI 和 RViz。
 
 如果调试目标是课程演示的完整相机/雷达画面，WSL 图形栈可能成为主要不稳定因素；先保证 server-only 链路可运行，再单独处理图形显示。
+
+## 本次日志对应的问题与处理
+
+日志说明当前 Gazebo Sim 8 已经正常启动，车辆实体也已经成功生成：
+
+- `Entity creation successful`：车辆已经被 `ros_gz_sim create` 加入世界。
+- `DiffDrive subscribing to twist messages on [/cmd_vel]`：Gazebo 车辆驱动插件已经订阅速度命令。
+- `Passing message from ROS geometry_msgs/msg/Twist to Gazebo gz.msgs.Twist`：ROS 到 Gazebo 的 `/cmd_vel` 桥接已经工作。
+- `Camera images ... advertised on [/sensors/camera/image_raw]`、`Laser scans ... advertised on [/sensors/lidar/scan]`：Gazebo 端相机和雷达传感器已经发布数据。
+
+这说明问题已经不是 Gazebo 启动失败，而是下面几个更高层的问题：
+
+1. 锥桶显示为圆柱体。
+   之前为了绕开缺失 mesh 时的加载失败，锥桶 visual 临时改成了 cylinder。现在已经改回 mesh 外观，collision 仍保留 cylinder，避免 DART 对 mesh collision 的不稳定问题。
+
+2. RViz 中相机/雷达可视化不明显。
+   当前 RViz 配置已经包含：
+   - `/sensors/camera/image_raw`：Image 显示项。
+   - `/sensors/lidar/scan`：LaserScan 显示项。
+   - `/sensors/lidar/scan/points`：PointCloud2 显示项。
+   - `/visualization/cone_map`：建图锥桶 MarkerArray。
+   - `/visualization/planning`、`/planning/centerline`：规划可视化。
+
+3. 小车开始阶段不转向。
+   起点是 `(0, -15)`，朝北。当前默认 fallback 规划路径前半段本来就是沿 `x=0` 直行，到接近 `y=0` 后才进入右角弯。如果车还没跑到弯道入口，只走直线是正常的。若到 `y=0` 附近仍不转，需要检查规划路径和角速度命令。
+
+## 完整可视化启动流程
+
+先清理旧进程和旧环境：
+
+```bash
+pkill -INT -f "gz sim|ign gazebo|gazebo|gzserver|gzclient|rviz2|ros_gz_bridge|parameter_bridge|spawn_entity|create" || true
+sleep 2
+pkill -9 -f "gz sim|ign gazebo|gazebo|gzserver|gzclient|rviz2|ros_gz_bridge|parameter_bridge|spawn_entity|create" || true
+
+unset PYTHONPATH
+unset LD_LIBRARY_PATH
+unset AMENT_PREFIX_PATH
+unset CMAKE_PREFIX_PATH
+unset COLCON_PREFIX_PATH
+```
+
+同步到 WSL 后重新构建。注意不要把 Windows 侧旧的 `build/ install/ log/` 同步进去：
+
+```bash
+cd ~/文档/SCUT_Racing_Tasks/homework/percep_node_track
+rm -rf build install log
+source /opt/ros/jazzy/setup.bash
+colcon build --symlink-install --event-handlers console_direct+
+source install/setup.bash
+
+ros2 pkg prefix right_angle_track
+ros2 pkg prefix right_angle_stack
+```
+
+上面两个 prefix 必须指向 `homework/percep_node_track/install/...`，不能再出现旧的 `大作业/percep_node+track/install/...`。
+
+全部传感器、Gazebo GUI、RViz 一起启动：
+
+```bash
+ros2 launch right_angle_stack right_angle_harmonic.launch.py \
+  use_rviz:=true \
+  gz_args:="-r -v 4 $(ros2 pkg prefix right_angle_track)/share/right_angle_track/worlds/right_angle_harmonic.sdf"
+```
+
+如果 RViz 或 Gazebo GUI 不稳定，分两步启动更容易定位问题：
+
+```bash
+# 终端 1：只开 Gazebo GUI 和完整传感器，不开 RViz
+ros2 launch right_angle_stack right_angle_harmonic.launch.py \
+  use_rviz:=false \
+  gz_args:="-r -v 4 $(ros2 pkg prefix right_angle_track)/share/right_angle_track/worlds/right_angle_harmonic.sdf"
+
+# 终端 2：确认话题有数据后再单独开 RViz
+source /opt/ros/jazzy/setup.bash
+source ~/文档/SCUT_Racing_Tasks/homework/percep_node_track/install/setup.bash
+rviz2 -d ~/文档/SCUT_Racing_Tasks/homework/percep_node_track/install/right_angle_stack/share/right_angle_stack/rviz/right_angle.rviz
+```
+
+## 相机和雷达可视化验证
+
+Gazebo 侧先看传感器是否存在：
+
+```bash
+gz topic -l | grep -E 'camera|lidar|sensors'
+```
+
+ROS 侧看 bridge 后的话题：
+
+```bash
+ros2 topic list | grep -E 'camera|lidar'
+ros2 topic echo /sensors/camera/camera_info --once
+ros2 topic hz /sensors/camera/image_raw
+ros2 topic echo /sensors/lidar/scan --once
+ros2 topic hz /sensors/lidar/scan
+ros2 topic echo /sensors/lidar/scan/points --once
+```
+
+判断方法：
+
+- `gz topic` 有数据、ROS 没有：优先查 `right_angle_harmonic.launch.py` 里的 `ros_gz_bridge` 参数。
+- ROS 有数据、RViz 没显示：检查 RViz Fixed Frame 是否为 `world`，Image topic 是否为 `/sensors/camera/image_raw`，LaserScan topic 是否为 `/sensors/lidar/scan`，PointCloud2 topic 是否为 `/sensors/lidar/scan/points`。
+- RViz 报 transform/frame 错误：先确认 `/tf`、`/localization/odom` 和 `/robot_description` 存在。
+
+## 不转向时的最小排查流程
+
+不要只看 Gazebo 画面，按 topic 一层一层确认：
+
+```bash
+ros2 topic echo /localization/pose --once
+ros2 topic echo /perception/cones --once
+ros2 topic echo /estimation/slam/map --once
+ros2 topic echo /planning/centerline --once
+ros2 topic echo /cmd_vel --once
+ros2 topic echo /sensors/wheel_odom --once
+```
+
+重点看：
+
+- `/planning/centerline` 是否包含右角弯路径。如果只有直线路径或为空，问题在感知/建图/规划。
+- `/cmd_vel.angular.z` 是否在接近 `y=0` 后明显非零。如果一直为 0，问题在规划或 pure pursuit 目标点选择。
+- `/cmd_vel.angular.z` 非零但 Gazebo 中车不转，问题在车辆驱动模型或 Gazebo 侧 `/cmd_vel` 接收。
+- `/sensors/wheel_odom` 非零但画面里车像在闪烁，优先考虑 Gazebo GUI 渲染问题；以 `/localization/pose` 和 `/sensors/wheel_odom` 判断真实运动。
+
+当前默认感知链路不是从相机/雷达识别锥桶，而是 `track_perception` 根据赛道 SDF 发布带噪声的锥桶位置。相机和雷达用于满足传感器仿真与 RViz 可视化要求，不直接参与当前控制决策。

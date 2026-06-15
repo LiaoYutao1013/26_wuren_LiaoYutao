@@ -27,6 +27,13 @@ Visualization Manager:
         Value: /sensors/lidar/scan
       Size (m): 0.03
       Style: Points
+    - Class: rviz_default_plugins/PointCloud2
+      Enabled: true
+      Name: Front LiDAR Points
+      Topic:
+        Value: /sensors/lidar/scan/points
+      Size (m): 0.03
+      Style: Points
     - Class: rviz_default_plugins/Image
       Enabled: true
       Name: Front Camera

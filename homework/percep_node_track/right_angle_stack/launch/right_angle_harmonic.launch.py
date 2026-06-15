@@ -109,6 +109,7 @@ def generate_launch_description():
                 '/sensors/gps/fix@sensor_msgs/msg/NavSatFix[gz.msgs.NavSat',
                 '/sensors/magnetic_field@sensor_msgs/msg/MagneticField[gz.msgs.Magnetometer',
                 '/sensors/lidar/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+                '/sensors/lidar/scan/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
                 '/sensors/camera/image_raw@sensor_msgs/msg/Image[gz.msgs.Image',
                 '/sensors/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
             ],
