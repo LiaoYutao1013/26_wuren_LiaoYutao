@@ -15,6 +15,7 @@ def generate_launch_description():
     track_share = get_package_share_directory('right_angle_track')
     ros_gz_sim_share = get_package_share_directory('ros_gz_sim')
 
+    world_name = 'right_angle_world'
     world_path = os.path.join(track_share, 'worlds', 'right_angle_harmonic.sdf')
     robot_sdf = os.path.join(stack_share, 'models', 'right_angle_car_harmonic', 'model.sdf')
     robot_xacro = os.path.join(stack_share, 'urdf', 'right_angle_car.urdf.xacro')
@@ -77,7 +78,7 @@ def generate_launch_description():
             name='spawn_right_angle_car',
             output='screen',
             arguments=[
-                '-world', 'right_angle_world',
+                '-world', world_name,
                 '-file', robot_sdf,
                 '-name', model_name,
                 '-x', '0.0',
@@ -89,11 +90,20 @@ def generate_launch_description():
         Node(
             package='ros_gz_bridge',
             executable='parameter_bridge',
+            name='ros_gz_clock_bridge',
+            output='screen',
+            arguments=[
+                f'/world/{world_name}/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+            ],
+            remappings=[(f'/world/{world_name}/clock', '/clock')],
+        ),
+        Node(
+            package='ros_gz_bridge',
+            executable='parameter_bridge',
             name='ros_gz_bridge',
             output='screen',
             arguments=[
-                '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
-                '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist',
+                '/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist',
                 '/sensors/wheel_odom@nav_msgs/msg/Odometry[gz.msgs.Odometry',
                 '/sensors/imu/data_raw@sensor_msgs/msg/Imu[gz.msgs.IMU',
                 '/sensors/gps/fix@sensor_msgs/msg/NavSatFix[gz.msgs.NavSat',
