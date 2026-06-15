@@ -132,7 +132,7 @@ percep_node_track/
 | 建图可视化 | `/visualization/cone_map` | `visualization_msgs/msg/MarkerArray` | RViz 锥桶 |
 | 规划可视化 | `/visualization/planning` | `visualization_msgs/msg/MarkerArray` | RViz 中心线 |
 
-当前总启动命令默认使用老师给的 `sim_perception` 加密感知包。它承担“发布车辆前方一定范围内锥桶颜色和位置”的感知子系统角色。相机和雷达满足传感器建模与 RViz 可视化要求，当前不直接参与控制决策。
+当前总启动命令默认使用给的 sim_perception ，充当感知子系统。相机和雷达满足传感器建模与 RViz 可视化要求，当前不直接参与控制决策。
 
 ## 环境与构建
 
@@ -234,7 +234,7 @@ ros2 launch right_angle_stack right_angle_wsl_headless.launch.py use_rviz:=false
 
 ### 感知算法默认设置
 
-默认启动时已经使用老师给的 `sim_perception`：
+默认启动时已经使用老师给的 sim_perception：
 
 ```bash
 ros2 launch right_angle_stack right_angle_harmonic.launch.py \
@@ -249,7 +249,7 @@ use_builtin_perception:=false
 use_sim_perception:=true
 ```
 
-如果加密包运行环境临时有问题，可以切回内置 `track_perception` 做 fallback 调试：
+如果加密包运行环境临时有问题，可以切回内置 track_perception（AI生成，用于看数据细节） 做 fallback 调试：
 
 ```bash
 ros2 launch right_angle_stack right_angle_harmonic.launch.py \
@@ -259,13 +259,13 @@ ros2 launch right_angle_stack right_angle_harmonic.launch.py \
   gz_args:="-r -v 4 $(ros2 pkg prefix right_angle_track)/share/right_angle_track/worlds/right_angle_harmonic.sdf"
 ```
 
-若 `sim_perception` 报缺少 `pyarmor_runtime.so`，检查：
+若 sim_perception 报缺少 pyarmor_runtime.so，检查
 
 ```bash
 find sim_perception install/sim_perception -name 'pyarmor_runtime.so' -ls
 ```
 
-该 `.so` 是运行加密包必需文件，不能被 `.gitignore` 屏蔽。
+该 .so 是运行加密包必需文件，不能被 .gitignore 屏蔽（先前误屏蔽了此文件，导致组员使用同步后的代码测试时失败）。
 
 ## 各环节开发
 
@@ -275,13 +275,13 @@ find sim_perception install/sim_perception -name 'pyarmor_runtime.so' -ls
 
 主要文件：
 
-- `tracks/worlds/right_angle_harmonic.sdf`
-- `tracks/models/shixi/model.sdf`
-- `tracks/models/blue_cone/model.sdf`
-- `tracks/models/yellow_cone/model.sdf`
-- `right_angle_stack/models/right_angle_car_harmonic/model.sdf`
-- `right_angle_stack/urdf/right_angle_car.urdf.xacro`
-- `right_angle_stack/launch/right_angle_harmonic.launch.py`
+- tracks/worlds/right_angle_harmonic.sdf
+- tracks/models/shixi/model.sdf
+- tracks/models/blue_cone/model.sdf
+- tracks/models/yellow_cone/model.sdf
+- right_angle_stack/models/right_angle_car_harmonic/model.sdf
+- right_angle_stack/urdf/right_angle_car.urdf.xacro
+- right_angle_stack/launch/right_angle_harmonic.launch.py
 
 开发步骤：
 
@@ -297,30 +297,30 @@ find sim_perception install/sim_perception -name 'pyarmor_runtime.so' -ls
 
    最终设计为：
 
-   - visual 使用 `.dae` mesh，保证 Gazebo 里看起来像锥桶。
+   - visual 使用 .dae mesh，Gazebo 里外观就是锥桶。
    - collision 使用 cylinder，避免 mesh collision 在 DART/ODE 中带来不稳定。
 
-   这样既满足可视化，又减少物理仿真碰撞问题。
+   既满足可视化，又减少物理仿真碰撞问题。
 
 4. 建立车辆模型。
 
-   `right_angle_car_harmonic/model.sdf` 中包含：
+   right_angle_car_harmonic/model.sdf 中包含
 
-   - `base_link`
+   - base_link
    - 四个车轮 link 和 revolute joint
    - DiffDrive 插件
    - 相机 link 和 camera sensor
    - 雷达 link 和 gpu_lidar sensor
    - GPS、IMU、磁力计 sensor
 
-   车辆通过 DiffDrive 接收 `/cmd_vel`，发布 `/sensors/wheel_odom`。
+   车辆通过 DiffDrive 接收 /cmd_vel，发布 /sensors/wheel_odom。
 
 5. 建立 Gazebo/ROS 桥接。
 
-   `right_angle_harmonic.launch.py` 中使用 `ros_gz_bridge parameter_bridge` 桥接：
+   right_angle_harmonic.launch.py 中使用 ros_gz_bridge parameter_bridge 桥接：
 
-   - ROS -> Gazebo：`/cmd_vel`
-   - Gazebo -> ROS：`/clock`、轮速里程计、GPS、IMU、磁力计、相机、雷达
+   - ROS -> Gazebo：/cmd_vel
+   - Gazebo -> ROS：/clock、轮速里程计、GPS、IMU、磁力计、相机、雷达
 
 6. 可视化。
 
@@ -328,32 +328,30 @@ find sim_perception install/sim_perception -name 'pyarmor_runtime.so' -ls
 
 ### 2. 定位
 
-定位节点：`right_angle_stack/right_angle_stack/localization_fusion.py`
+定位节点：right_angle_stack/right_angle_stack/localization_fusion.py
 
 输入：
 
-- `/sensors/gps/fix`
-- `/sensors/imu/data_raw`
-- `/sensors/wheel_odom`
-- `/sensors/magnetic_field`
+- /sensors/gps/fix
+- /sensors/imu/data_raw
+- /sensors/wheel_odom
+- /sensors/magnetic_field
 
 输出：
 
-- `/localization/pose`
-- `/localization/odom`
-- TF：`world -> base_link`
+```text
+/localization/pose
+/localization/odom
+TF：world -> base_link
+```
 
 实现思路：
 
 1. GPS 经纬度转局部米制坐标。
 
-   使用局部切平面近似：
-
-   ```text
-   x = R * cos(lat0) * (lon - lon0)
-   y = R * (lat - lat0)
-   ```
-
+   使用局部切平面近似
+   $x = R cos(lat_0) * (lon - lon_0)$
+   $y = R (lat - lat_0)$
    其中 R = 6378137.0 m。
 
 2. 第一帧 GPS 作为仿真参考点。
@@ -384,24 +382,24 @@ find sim_perception install/sim_perception -name 'pyarmor_runtime.so' -ls
 
 ### 4. 建图
 
-节点：`right_angle_stack/right_angle_stack/cone_mapper.py`
+节点：right_angle_stack/right_angle_stack/cone_mapper.py
 
-输入：
+输入
 
-- `/localization/pose`
-- `/perception/cones`
-- `/perception/cone_detections`
+- /localization/pose
+- /perception/cones
+- /perception/cone_detections
 
-输出：
+输出
 
-- `/estimation/slam/map`
-- `/visualization/cone_map`
+- /estimation/slam/map
+- /visualization/cone_map
 
 实现逻辑：
 
 1. 接收局部感知锥桶。
 
-   感知消息的 `frame_id` 通常是 `base_link`，表示锥桶坐标在车辆局部坐标系下。
+   感知消息的 frame_id 通常是 base_link，表示锥桶坐标在车辆局部坐标系下。
 
 2. 坐标变换。
 
@@ -491,24 +489,24 @@ find sim_perception install/sim_perception -name 'pyarmor_runtime.so' -ls
 
 5. 计算$yaw_rate = target_{speed}*curvature + yaw_{errorgain}*yaw_{error}$
 
-1. 限制最大角速度 `max_yaw_rate`。
-2. 根据曲率做简单降速，弯道中速度降低，直道恢复目标速度。
-3. 发布 `/cmd_vel.linear.x` 和 `/cmd_vel.angular.z`。
+6. 限制最大角速度 max_yaw_rate。
+7. 根据曲率做简单降速，弯道中速度降低，直道恢复目标速度。
+8. 发布 /cmd_vel.linear.x 和 /cmd_vel.angular.z。
 
-如果 `/cmd_vel.angular.z` 已经非零但 Gazebo 里车不转，问题通常在 Gazebo 车辆模型或 `/cmd_vel` bridge；如果 `/cmd_vel.angular.z` 一直为零，问题通常在规划路径、车辆定位或 lookahead 目标点选择。
+如果 /cmd_vel.angular.z 已经非零但 Gazebo 里车不转，问题通常在 Gazebo 车辆模型或 /cmd_vel bridge；如果 /cmd_vel.angular.z 一直为零，问题通常在规划路径、车辆定位或 lookahead 目标点选择。
 
 ### 7. 闭环联调过程
 
 联调时按下面顺序推进：
 
 1. Gazebo 能启动，车辆和锥桶可见。
-2. `/cmd_vel` 能通过 bridge 让 Gazebo 车辆运动。
+2. /cmd_vel 能通过 bridge 让 Gazebo 车辆运动。
 3. GPS、IMU、轮速、磁力计 topic 有数据。
-4. `/localization/pose` 在赛道附近，不飞到几万米外。
-5. `/perception/cones` 在车辆前方有锥桶。
-6. `/estimation/slam/map` 有 `world` 下的锥桶。
-7. `/planning/centerline` 有完整右角弯路径。
-8. `/cmd_vel` 有速度和角速度。
+4. /localization/pose 在赛道附近，不飞到几万米外。
+5. /perception/cones 在车辆前方有锥桶。
+6. /estimation/slam/map 有 world 下的锥桶。
+7. /planning/centerline 有完整右角弯路径。
+8. /cmd_vel 有速度和角速度。
 9. Gazebo 中车辆沿直道进入右角弯。
 10. RViz 中能看到 TF、车辆模型、相机、雷达、锥桶地图和规划线。
 
@@ -534,7 +532,7 @@ ros2 topic echo /clock --once
 /pure_pursuit_controller
 ```
 
-如果手动切换到 fallback，才会额外出现 `/track_perception`。
+如果手动切换到 fallback，才会额外出现 /track_perception。
 
 ### 传感器检查
 
@@ -570,12 +568,12 @@ ros2 topic echo /sensors/wheel_odom --once
 
 判断方式：
 
-- `/localization/pose` 坐标离赛道很远：定位融合问题。
-- `/perception/cones` 为空：感知范围、车辆位姿或锥桶 SDF 读取问题。
-- `/estimation/slam/map` 为空：建图没有收到局部锥桶或定位不可用。
-- `/planning/centerline` 为空：规划器没有地图且 fallback 被关闭。
-- `/cmd_vel.angular.z` 一直为 0：控制器没有看到弯道目标点，或定位/路径不一致。
-- `/cmd_vel.angular.z` 非 0 但车不转：Gazebo DiffDrive 或 bridge 问题。
+- /localization/pose 坐标离赛道很远：定位融合问题。
+- /perception/cones 为空：感知范围、车辆位姿或锥桶 SDF 读取问题。
+- /estimation/slam/map 为空：建图没有收到局部锥桶或定位不可用。
+- /planning/centerline` 为空：规划器没有地图且 fallback 被关闭。
+- /cmd_vel.angular.z 一直为 0：控制器没有看到弯道目标点，或定位/路径不一致。
+- /cmd_vel.angular.z 非 0 但车不转：Gazebo DiffDrive 或 bridge 问题。
 
 ### 直接测试车辆驱动
 
@@ -604,13 +602,7 @@ Jazzy 的接口生成链路比旧版本更严格，原.msg适配成.idl时失败
 
 解决：
 
-保留.msg方便理解架构，但 CMake 实际直接用.idl（AI根据.msg编写的）：
-
-```text
-msg/Cone.idl
-msg/ConeDetections.idl
-msg/Map.idl
-```
+保留.msg方便理解架构，但 CMake 实际直接用相应的.idl（AI根据.msg编写的）
 
 ### CMakeCache 路径不一致
 
@@ -622,7 +614,7 @@ The current CMakeCache.txt directory ... is different than the directory ...
 
 原因：
 
-把已经构建过的 workspace 从 Windows 路径复制到 WSL 路径时，`build/` 里记录的绝对路径仍是旧路径。
+把已经构建过的 workspace 从 Windows 路径复制到 WSL 路径时，build/ 里记录的绝对路径还是旧路径。
 
 解决：
 
@@ -669,12 +661,12 @@ y: 12862
 
 原因：
 
-GPS 经纬度原点和 Gazebo NavSat 输出没有对齐，或者磁力计航向跳变参与融合。
+GPS 经纬度原点和 Gazebo NavSat 输出没有对齐，或者磁力计航向突变参与融合。
 
 解决：
 
 - 第一帧 GPS 映射到初始位姿；
-- GPS 跳变拒绝；
+- GPS 突变拒绝；
 - 磁力计默认 `mag_gain: 0.0`，后续标定后再启用。
 
 ## 组内协作
@@ -707,54 +699,20 @@ Gazebo 是否收到 /cmd_vel？
 - 阅读长日志，归类错误层级；
 - 生成排查命令；
 - 辅助修改 launch、SDF、RViz 和定位融合代码；
-- 整理 README 和答辩复盘。
-
-AI 输出没有直接作为结论，关键判断都通过下面方式验证：
-
-- `colcon build`
-- `ros2 topic echo`
-- `ros2 topic hz`
-- `gz topic -l`
-- Gazebo GUI 画面
-- RViz 可视化
-
-## 优化方向
-
-当前版本已经完成直角弯闭环，后续可以继续优化：
-
-- 定位融合从互补滤波升级到 EKF。
-- 重新标定磁力计坐标系和磁偏角，逐步启用 `mag_gain`。
-- 规划更多依赖锥桶地图，减少解析 fallback。
-- 控制器增加入弯减速和出弯加速策略。
-- 感知从 SDF 模拟锥桶升级到相机/雷达真实检测。
-- 增加 rosbag 记录，方便复现问题。
-- 在 README 中加入图片或动图。
-
-图片建议放到：
-
-```text
-docs/images/
-```
-
-引用格式：
-
-```markdown
-![Gazebo 仿真画面](docs/images/gazebo_right_angle.png)
-![RViz 传感器和规划可视化](docs/images/rviz_right_angle.png)
-```
+- 整理 README。
 
 ## 答辩准备
 
 建议能解释下面问题：
 
-- 为什么 `world` 用 ENU，`base_link` 用 FLU？
-- 为什么起点 `(0, -15)` 朝北对应 yaw `pi/2`？
+- 为什么 world 用 ENU，base_link 用 FLU？
+- 为什么起点 (0, -15) 朝北对应 yaw pi/2？
 - GPS 经纬度如何转局部米制坐标？
 - 为什么第一帧 GPS 被用作仿真局部参考？
 - 为什么磁力计当前默认不强融合？
 - 为什么锥桶 visual 用 mesh，collision 用 cylinder？
 - 为什么相机和雷达当前只用于可视化？
-- 建图如何把 `base_link` 下锥桶变成 `world` 下地图？
+- 建图如何把 base_link 下锥桶变成 world 下地图？
 - 规划如何从蓝黄锥生成中心线？
 - fallback 路径为什么前半段是直行？
 - Pure Pursuit 如何根据目标点算角速度？
